@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoFix - симулятор ремонта автомобилей</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 17, 26, 0.95);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-card {
+      background: #111a26;
+      border: 1px solid #263447;
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+    .auth-card h2 { margin-top: 0; margin-bottom: 12px; color: #f4f7fb; }
+    .auth-card p { color: #9aa7b7; font-size: 14px; margin-bottom: 24px; }
+    .auth-form { display: flex; flex-direction: column; gap: 16px; text-align: left; }
+    .auth-form label { color: #9aa7b7; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+    .auth-form input {
+      background: #0b111a;
+      border: 1px solid #263447;
+      padding: 10px 14px;
+      border-radius: 6px;
+      color: #f4f7fb;
+      font-size: 15px;
+    }
+    .auth-form input:focus { border-color: #2f6df6; outline: none; }
+    .auth-toggle-btn {
+      background: none; border: none; color: #2f6df6; cursor: pointer; font-size: 14px; margin-top: 16px; text-decoration: underline;
+    }
+    .auth-card .primary-button { width: 100%; padding: 12px; margin-top: 8px; }
+    .logout-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid #263447; }
+  </style>
+</head>
+<body>
+
+  <div id="authOverlay" class="auth-overlay" style="display: none;">
+    <div class="auth-card">
+      <h2 id="authTitle">Регистрация мастера</h2>
+      <p id="authDesc">Создайте аккаунт, чтобы попасть в облачный рейтинг механиков.</p>
+      
+      <form id="authForm" class="auth-form">
+        <label id="usernameLabel">
+          Имя в рейтинге (Никнейм)
+          <input id="authUsername" type="text" placeholder="Например, СТО_Красавчик" required>
+        </label>
+        <label>
+          Электронная почта
+          <input id="authEmail" type="email" placeholder="example@mail.com" required>
+        </label>
+        <label>
+          Пароль
+          <input id="authPassword" type="password" placeholder="Минимум 6 символов" required>
+        </label>
+        <button class="primary-button" type="submit" id="authSubmitBtn">Зарегистрироваться</button>
+      </form>
+      
+      <button id="authToggleType" class="auth-toggle-btn" type="button">Уже есть аккаунт? Войти</button>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <aside class="sidebar" aria-label="Главное меню">
+      <div class="logo">
+        <span class="logo-mark">AF</span>
+        <strong>AutoFix</strong>
+      </div>
+      <nav class="side-nav">
+        <button class="nav-button is-active" type="button" data-view="home"><span>Г</span>Главная</button>
+        <button class="nav-button" type="button" data-view="market"><span>Р</span>Рынок автомобилей</button>
+        <button class="nav-button" type="button" data-view="garage"><span>М</span>Мой гараж</button>
+        <button class="nav-button" type="button" data-view="repair"><span>К</span>Ремонт</button>
+        <button class="nav-button" type="button" data-view="sale"><span>П</span>Продажа авто</button>
+        <button class="nav-button" type="button" data-view="events"><span>С</span>События</button>
+        <button class="nav-button" type="button" data-view="rating"><span>Т</span>Рейтинг</button>
+        <button class="nav-button" type="button" data-view="settings"><span>Н</span>Настройки</button>
+      </nav>
+    </aside>
+
+    <div class="content-shell">
+      <header class="topbar">
+        <button id="menuButton" class="menu-button" type="button" aria-label="Открыть меню">Меню</button>
+        <section class="stats-strip" aria-label="Показатели игрока">
+          <article class="top-stat">
+            <span class="stat-icon">₸</span>
+            <div>
+              <span>Баланс</span>
+              <strong id="balanceText">0 ₸</strong>
+            </div>
+          </article>
+          <article class="top-stat">
+            <span class="stat-icon">XP</span>
+            <div>
+              <span>Опыт</span>
+              <strong id="xpText">0 / 1000</strong>
+            </div>
+          </article>
+          <article class="top-stat">
+            <span class="stat-icon">%</span>
+            <div>
+              <span>Репутация</span>
+              <strong id="reputationText">0%</strong>
+            </div>
+          </article>
+          <article class="top-stat">
+            <span class="stat-icon">A</span>
+            <div>
+              <span>Продано машин</span>
+              <strong id="soldText">0</strong>
+            </div>
+          </article>
+        </section>
+        <div class="profile-card">
+          <span class="avatar" id="avatarLetter">M</span>
+          <div>
+            <strong id="profileName">Загрузка...</strong>
+            <span id="levelText">Уровень 1</span>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section id="homeView" class="view is-visible">
+          <section class="hero-panel">
+            <div class="hero-copy">
+              <h1>Добро пожаловать в AutoFix</h1>
+              <p>Покупайте автомобили, проводите диагностику, находите скрытые поломки и продавайте машины с умом.</p>
+              <button class="primary-button" type="button" data-switch="market">К рынку автомобилей</button>
+            </div>
+            <img src="assets/camry.svg" alt="Автомобиль в мастерской">
+          </section>
+
+          <section class="home-grid">
+            <article class="panel panel-wide">
+              <div class="panel-heading">
+                <h2>Рынок автомобилей</h2>
+                <button class="link-button" type="button" data-switch="market">Смотреть все</button>
+              </div>
+              <div id="homeMarketList" class="compact-cards"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <h2>Мой гараж</h2>
+                <button class="link-button" type="button" data-switch="garage">Смотреть все</button>
+              </div>
+              <div id="homeGarageList"></div>
+            </article>
+
+            <article class="panel panel-wide">
+              <div class="panel-heading">
+                <h2>События</h2>
+                <button class="link-button" type="button" data-switch="events">Смотреть все</button>
+              </div>
+              <div id="homeEventsList" class="event-list"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <h2>Топ механиков</h2>
+                <button class="link-button" type="button" data-switch="rating">Смотреть все</button>
+              </div>
+              <div id="homeRatingList" class="rating-list"></div>
+            </article>
+          </section>
+        </section>
+
+        <section id="marketView" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="section-kicker">Сделки без повторов</p>
+              <h1>Рынок автомобилей</h1>
+            </div>
+            <button id="newDealsButton" class="secondary-button" type="button">Обновить порядок</button>
+          </div>
+
+          <section class="filters" aria-label="Фильтры рынка">
+            <label>
+              Поиск
+              <input id="searchInput" type="search" placeholder="Марка или модель">
+            </label>
+            <label>
+              Состояние
+              <select id="conditionFilter">
+                <option value="all">Любое</option>
+                <option value="poor">Плохое</option>
+                <option value="fair">Среднее</option>
+                <option value="good">Хорошее</option>
+              </select>
+            </label>
+            <label>
+              Прогноз
+              <select id="dealFilter">
+                <option value="all">Все сделки</option>
+                <option value="positive">Возможный плюс</option>
+                <option value="danger">Риск минуса</option>
+              </select>
+            </label>
+          </section>
+
+          <div id="marketList" class="car-grid"></div>
+        </section>
+
+        <section id="garageView" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="section-kicker">Ваши автомобили</p>
+              <h1>Мой гараж</h1>
+            </div>
+          </div>
+          <div id="garageList" class="garage-grid"></div>
+        </section>
+
+        <section id="repairView" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="section-kicker">Диагностика и ремонт</p>
+              <h1>Ремонт</h1>
+            </div>
+          </div>
+          <div id="repairList" class="garage-grid"></div>
+        </section>
+
+        <section id="saleView" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="section-kicker">Финальный расчёт</p>
+              <h1>Продажа авто</h1>
+            </div>
+          </div>
+          <div id="saleList" class="garage-grid"></div>
+        </section>
+
+        <section id="eventsView" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="section-kicker">Журнал мастерской</p>
+              <h1>События</h1>
+            </div>
+          </div>
+          <div id="eventsList" class="event-list"></div>
+        </section>
+
+        <section id="ratingView" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="section-kicker">Сравнение игроков</p>
+              <h1>Рейтинг</h1>
+            </div>
+          </div>
+          <div class="panel">
+            <div id="ratingList" class="rating-list"></div>
+          </div>
+        </section>
+
+        <section id="settingsView" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="section-kicker">Управление прогрессом</p>
+              <h1>Настройки</h1>
+            </div>
+          </div>
+          <article class="panel settings-panel">
+            <h2>Новая игра</h2>
+            <p>Очистит купленные автомобили, гараж, события и финансовую историю.</p>
+            <button id="resetButton" class="danger-button" type="button">Начать заново</button>
+            
+            <div class="logout-section">
+              <h2>Аккаунт</h2>
+              <p>Вы можете выйти из текущего профиля механика.</p>
+              <button id="logoutButton" class="secondary-button" type="button">Выйти из аккаунта</button>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <template id="marketCardTemplate">
+    <article class="market-card">
+      <img class="car-image" src="" alt="">
+      <div class="card-body">
+        <div class="card-title">
+          <h2></h2>
+          <span class="condition-badge"></span>
+        </div>
+        <p class="car-meta"></p>
+        <div class="price-line">
+          <span>Цена</span>
+          <strong class="price-text"></strong>
+        </div>
+        <div class="mini-stats">
+          <div><span>Видимый ремонт</span><strong class="visible-cost"></strong></div>
+          <div><span>Прогноз</span><strong class="forecast-text"></strong></div>
+        </div>
+        <p class="risk-text"></p>
+        <button class="primary-button buy-button" type="button">Купить</button>
+      </div>
+    </article>
+  </template>
+
+  <template id="garageCardTemplate">
+    <article class="garage-card">
+      <div class="garage-top">
+        <img class="garage-image" src="" alt="">
+        <div>
+          <div class="card-title">
+            <h2></h2>
+            <span class="profit-badge"></span>
+          </div>
+          <p class="garage-meta"></p>
+        </div>
+      </div>
+
+      <div class="condition-box">
+        <div class="condition-total">
+          <span>Состояние автомобиля</span>
+          <strong class="health-text"></strong>
+        </div>
+        <div class="system-bars"></div>
+      </div>
+
+      <div class="mini-stats garage-money">
+        <div><span>Куплен</span><strong class="purchase-text"></strong></div>
+        <div><span>Ремонт</span><strong class="repair-text"></strong></div>
+        <div><span>Оценка</span><strong class="value-text"></strong></div>
+        <div><span>Итог</span><strong class="result-text"></strong></div>
+      </div>
+
+      <div class="diagnostic-note"></div>
+      <div class="repair-items"></div>
+
+      <div class="garage-actions">
+        <button class="secondary-button diagnose-button" type="button">Диагностика</button>
+        <button class="primary-button sell-button" type="button">Продать</button>
+      </div>
+    </article>
+  </template>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="scrim" class="scrim"></div>
+  <script src="app.js"></script>
+</body>
+</html>
