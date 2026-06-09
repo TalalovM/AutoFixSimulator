@@ -740,3 +740,75 @@ const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
 
 function calculateDonation() { ... }
 async function processDemoPayment() { ... }
+    const repairDetails = {
+    engine_overhaul: {
+        title: "Капитальный ремонт двигателя",
+        total: 1500,
+        works: [
+            { name: "Демонтаж и монтаж ДВС", price: 400 },
+            { name: "Замена поршневых колец", price: 500 },
+            { name: "Шлифовка коленвала", price: 300 },
+            { name: "Расходные материалы (масло, прокладки)", price: 300 }
+        ]
+    },
+    brake_replacement: {
+        title: "Замена тормозной системы",
+        total: 350,
+        works: [
+            { name: "Замена передних тормозных дисков", price: 150 },
+            { name: "Замена колодок (в круг)", price: 100 },
+            { name: "Прокачка тормозной жидкости", price: 50 },
+            { name: "Работа мастера", price: 50 }
+        ]
+    }
+};
+
+// 2. Функция показа чека
+function showReceipt(repairId) {
+    const repair = repairDetails[repairId];
+    if (!repair) return;
+
+    document.getElementById('receipt-title').innerText = repair.title;
+    document.getElementById('receipt-total-price').innerText = `$${repair.total}`;
+
+    const listContainer = document.getElementById('receipt-works-list');
+    listContainer.innerHTML = ''; 
+
+    repair.works.forEach(work => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${work.name}</span> — <strong>$${work.price}</strong>`;
+        listContainer.appendChild(li);
+    });
+
+    document.getElementById('receipt-modal').style.display = 'block';
+}
+
+// 3. Функция закрытия чека
+function closeReceipt() {
+    document.getElementById('receipt-modal').style.display = 'none';
+}
+
+// 4. Функция загрузки рейтинга из Supabase
+async function loadLeaderboard() {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('username, balance')
+        .order('balance', { ascending: false }) 
+        .limit(10); 
+
+    if (error) {
+        console.error('Ошибка загрузки рейтинга:', error);
+        return;
+    }
+
+    const container = document.getElementById('leaderboard-list');
+    if (!container) return; // Защита, если блока нет на странице
+    container.innerHTML = ''; 
+
+    data.forEach((player, index) => {
+        const playerRow = document.createElement('div');
+        playerRow.className = 'rating-item';
+        playerRow.innerHTML = `<span>${index + 1}. ${player.username}</span> — <span>$${player.balance}</span>`;
+        container.appendChild(playerRow);
+    });
+}
