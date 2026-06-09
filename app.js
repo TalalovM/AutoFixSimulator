@@ -805,5 +805,5 @@ async function loadLeaderboard() {
         playerRow.className = 'rating-item';
         playerRow.innerHTML = `<span>${index + 1}. ${player.username}</span> — <span>$${player.balance}</span>`;
         container.appendChild(playerRow);
-    });
-}
+    }); // <-- ВОТ ЗДЕСЬ закрывается data.forEach
+} // <-- А ВОТ ЗДЕСЬ закрывается сама функция loadLeaderboar
