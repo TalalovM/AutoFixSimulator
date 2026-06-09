@@ -326,7 +326,11 @@ document.querySelectorAll("[data-view], [data-switch]").forEach(function(btn) {
   });
 });
 
-document.querySelector("#newDealsButton").addEventListener("click", refreshMarket);
+const newDealsBtn = document.querySelector("#newDealsButton");
+
+if (newDealsBtn) {
+    newDealsBtn.addEventListener("click", refreshMarket);
+}
 document.querySelector("#resetButton").addEventListener("click", resetGame);
 elements.menuButton.addEventListener("click", function() {
     document.body.classList.add("menu-open");
@@ -747,7 +751,7 @@ function renderGarageCollection(container, mode) {
     const template = document.querySelector("#garageCardTemplate").content.cloneNode(true);
     const health = calculateHealth(car);
     
-    template.querySelector(".garage-image").src = car.image;
+    template.querySelector(".car-image").src = car.image;
     template.querySelector("h2").textContent = car.name;
     template.querySelector(".health-text").textContent = `${health}%`;
     template.querySelector(".purchase-text").textContent = formatMoney(car.purchasePrice);
