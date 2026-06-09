@@ -2,9 +2,13 @@
 const SUPABASE_URL = "https://ycmvhvsbcexxpuzdskpu.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ztQr6Kblgt4kb-3R3nhiPg_ctswPZb6"; // Публичный ключ авторизации
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Объявляем глобальную константу курса ОДИН раз для всего файла на самом верху:
+const EX_RATE = 5; 
+
 async function signUp(email, password, username) {
-    // 1. Регистрируем пользователя в системе аутентификации
-    const { data, error } = await supabase.auth.signUp({
+    // 1. Регистрируем пользователя в системе атентификации
+    const { data, error } = await supabaseClient.auth.signUp({
         email: email,
         password: password,
     });
@@ -17,7 +21,7 @@ async function signUp(email, password, username) {
     // 2. Если регистрация успешна, создаем запись в нашей таблице игроков
     const user = data.user;
     if (user) {
-        const { error: dbError } = await supabase
+        const { error: dbError } = await supabaseClient
             .from('profiles')
             .insert([{ id: user.id, username: username, balance: 0 }]); // Стартовый баланс 0
         
@@ -27,7 +31,7 @@ async function signUp(email, password, username) {
 }
 
 async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: email,
         password: password
     });
@@ -187,15 +191,13 @@ function generateCarInstance(template) {
   };
 }
 
-// --- ИЗМЕНЕНИЕ: НАЧИСЛЕНИЕ ПРОЦЕНТОВ ЗА ПОЛЬЗОВАНИЕ КРЕДИТОМ ПРИ ОБНОВЛЕНИИ РЫНКА ---
 function refreshMarket() {
   if (state.loan.active) {
-    const interestCharge = Math.round(state.loan.principal * 0.02); // 2% от начальной суммы займа за каждый шаг
+    const interestCharge = Math.round(state.loan.principal * 0.02); 
     if (state.balance >= interestCharge) {
       state.balance -= interestCharge;
       addEvent("danger", "Проценты по кредиту", `Списана комиссия за обслуживание кредита: -${formatMoney(interestCharge)}`);
     } else {
-      // Имитация роста долга при отсутствии ликвидности
       state.loan.remaining += interestCharge;
       addEvent("danger", "Просрочка платежа", `Недостаточно средств! Начисленные проценты капитализированы к долгу: +${formatMoney(interestCharge)}`);
     }
@@ -235,7 +237,6 @@ function takeLoan(id) {
   commit("Кредитные средства зачислены на расчетный счет.");
 }
 
-// --- ИЗМЕНЕНИЕ: ГИБКОЕ РУЧНОЕ ПОГАШЕНИЕ ЗАЙМА ---
 function payLoanManual(amount) {
   const payment = Math.min(state.balance, state.loan.remaining, amount);
   if (payment <= 0) {
@@ -290,7 +291,6 @@ function repairCar(instanceId, repairId) {
   } else { showToast("Недостаточно средств на балансе."); }
 }
 
-// --- ИЗМЕНЕНИЕ: ТЕПЕРЬ ОТСЮДА ПОЛНОСТЬЮ УБРАНО АВТОМАТИЧЕСКОЕ СПИСАНИЕ КРЕДИТА ---
 function sellCar(instanceId) {
   const index = state.garage.findIndex(c => c.instanceId === instanceId);
   const car = state.garage[index];
@@ -387,7 +387,6 @@ function renderCompetitorRating() {
   });
 }
 
-// --- ИЗМЕНЕНИЕ: ОБНОВЛЕННЫЙ ИНТЕРФЕЙС ПАНЕЛИ С ДВУМЯ КНОПКАМИ ВЫПЛАТ ---
 function renderCreditPanel() {
   if (!elements.creditPanel) return;
   if (state.loan.active) {
@@ -436,7 +435,7 @@ function renderDashboard() {
       <div><span style="color:var(--muted);font-size:13px;">Чистая рентабельность (ROI)</span><br><strong style="font-size:20px;color:var(--green);">${roi}%</strong></div>
       <div><span style="color:var(--muted);font-size:13px;">Общая накопленная прибыль</span><br><strong style="font-size:20px;">${formatMoney(state.profitTotal)}</strong></div>
       <div><span style="color:var(--muted);font-size:13px;">Средняя маржа с объекта</span><br><strong style="font-size:20px;color:var(--amber);">${formatMoney(avgProfit)}</strong></div>
-      <div><span style="color:var(--muted);font-size:13px;">Инвестиции в основные фонды</span><br><strong style="font-size:20px;">${formatMoney(state.totalInvested)}</strong></div>
+      <div><span style="color:var(--muted);font-size:13px;">Инвестиции in основные фонды</span><br><strong style="font-size:20px;">${formatMoney(state.totalInvested)}</strong></div>
     </div>
     <div style="background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--line);">
       <span style="font-size:12px; color:var(--muted);">Текущий макроэкономический статус:</span>
@@ -611,17 +610,12 @@ function renderGarageCollection(container, mode) {
         const btn = document.createElement("button");
         btn.className = "secondary-button";
         btn.textContent = "Устранить";
-       btn.onclick = () => {
-    // 1. Запускаем твой стандартный ремонт машины
-    repairCar(car.instanceId, r.id); 
-    
-    // 2. Автоматически открываем чек. 
-    // r.id — это ID поломки. Если он совпадает с 'engine_overhaul' или 'brake_replacement', 
-    // чек сразу заполнится правильными 
-    if (typeof showReceipt === 'function') {
-        showReceipt(r.id); 
-    }
-};
+        btn.onclick = () => {
+            repairCar(car.instanceId, r.id); 
+            if (typeof showReceipt === 'function') {
+                showReceipt(r.id); 
+            }
+        };
         item.append(btn);
       }
       list.append(item);
@@ -674,16 +668,20 @@ function renderEvents() {
     elements.eventsList.append(el);
   });
 }
+
 function resetGame() {
   if (confirm("Выполнить сброс системы и очистить базу транзакций?")) {
     state = JSON.parse(JSON.stringify(initialState));
     refreshMarket();
   }
-  // Настройки бизнес-логики (Курс: 1 тенге = 5 игровых долларов)
-const EX_RATE = 5; 
+}
+
+// ==========================================
+// НОВЫЙ БЛОК: ДОНАТ, ЧЕК И РЕЙТИНГ (ВЫНЕСЕНЫ ИЗ RESETGAME)
+// ==========================================
+
 const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
 
-// Функция динамического перерасчета кассы
 function calculateDonation() {
     const kztInput = document.getElementById('kzt-amount').value;
     const method = document.getElementById('payment-method').value;
@@ -694,7 +692,6 @@ function calculateDonation() {
     const totalPay = baseAmount + commission;
     const gameMoney = baseAmount * EX_RATE;
 
-    // Обновляем текст в чеке на экране
     document.getElementById('res-base').innerText = baseAmount + ' KZT';
     document.getElementById('res-comm').innerText = commission.toFixed(1) + ' KZT';
     document.getElementById('res-total').innerText = totalPay.toFixed(1) + ' KZT';
@@ -703,10 +700,8 @@ function calculateDonation() {
     return { gameMoney, baseAmount };
 }
 
-// Симуляция транзакции и отправка в Supabase
 async function processDemoPayment() {
-    // 1. Проверяем, авторизован ли пользователь в системе
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     
     if (!user) {
         alert('Ошибка: Для совершения платежа необходимо войти в личный кабинет!');
@@ -719,11 +714,9 @@ async function processDemoPayment() {
         return;
     }
 
-    // Имитация задержки банковского эквайринга (меняем курсор на лоадер)
     document.body.style.cursor = 'wait';
     
-    // 2. Вызываем нашу безопасную SQL-функцию в Supabase
-    const { error } = await supabase.rpc('increment_balance', {
+    const { error } = await supabaseClient.rpc('increment_balance', {
         user_id: user.id,
         amount_to_add: gameMoney
     });
@@ -735,17 +728,11 @@ async function processDemoPayment() {
         alert('Произошла ошибка при проведении платежа: ' + error.message);
     } else {
         alert(`Успешно! Демо-платеж обработан.\nЗачислено на аккаунт: $${gameMoney} игровых денег.`);
-        
-        // Перерендерить баланс игрока на главном экране (вызови свою функцию, если она есть)
         if (typeof updateUIBalance === 'function') updateUIBalance();
     }
 }
 
-// Запускаем расчет один раз при загрузке страницы, чтобы чек не был пустым
-document.addEventListener("DOMContentLoaded", () => {
-    calculateDonation();
-});
-    const repairDetails = {
+const repairDetails = {
     engine_overhaul: {
         title: "Капитальный ремонт двигателя",
         total: 1500,
@@ -768,7 +755,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 };
 
-// 2. Функция показа чека
 function showReceipt(repairId) {
     const repair = repairDetails[repairId];
     if (!repair) return;
@@ -788,14 +774,12 @@ function showReceipt(repairId) {
     document.getElementById('receipt-modal').style.display = 'block';
 }
 
-// 3. Функция закрытия чека
 function closeReceipt() {
     document.getElementById('receipt-modal').style.display = 'none';
 }
 
-// 4. Функция загрузки рейтинга из Supabase
 async function loadLeaderboard() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('username, balance')
         .order('balance', { ascending: false }) 
@@ -807,7 +791,7 @@ async function loadLeaderboard() {
     }
 
     const container = document.getElementById('leaderboard-list');
-    if (!container) return; // Защита, если блока нет на странице
+    if (!container) return; 
     container.innerHTML = ''; 
 
     data.forEach((player, index) => {
@@ -815,5 +799,11 @@ async function loadLeaderboard() {
         playerRow.className = 'rating-item';
         playerRow.innerHTML = `<span>${index + 1}. ${player.username}</span> — <span>$${player.balance}</span>`;
         container.appendChild(playerRow);
-    }); // <-- ВОТ ЗДЕСЬ закрывается data.forEach
-} // <-- А ВОТ ЗДЕСЬ закрывается сама функция loadLeaderboar
+    }); 
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (document.getElementById('kzt-amount')) {
+        calculateDonation();
+    }
+});
