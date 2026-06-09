@@ -6,9 +6,92 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Объявляем глобальную константу курса ОДИН раз для всего файла на самом верху:
 const EX_RATE = 5; 
 
-// Блокировка форм и логика работы Личного Кабинета
+// ==========================================
+// ГЛОБАЛЬНЫЕ ФУНКЦИИ ИГРОВОГО ЧЕКА И ДОНАТА (ИСПРАВЛЕНИЕ ОШИБКИ DEFINED)
+// ==========================================
+function showReceipt(repairId) {
+    let foundRepair = null;
+    state.garage.forEach(car => {
+        const allRepairs = [...car.visibleRepairs, ...car.hiddenRepairs];
+        const rep = allRepairs.find(r => r.id === repairId);
+        if (rep) foundRepair = rep;
+    });
+
+    const title = foundRepair ? foundRepair.name : "Комплексный ремонт узла автомобиля";
+    let totalCost = foundRepair ? foundRepair.cost : 150000;
+    if (state.upgrades.tools && foundRepair) totalCost = Math.round(totalCost * 0.85);
+
+    document.getElementById('receipt-title').innerText = title;
+    document.getElementById('receipt-total-price').innerText = formatMoney(totalCost);
+
+    const listContainer = document.getElementById('receipt-works-list');
+    listContainer.innerHTML = ''; 
+
+    const partPrice = Math.round(totalCost * 0.65);
+    const workPrice = totalCost - partPrice;
+
+    const works = [
+        { name: "Оригинальные автозапчасти и расходники", price: partPrice },
+        { name: "Технологические нормо-часы механика СТО", price: workPrice }
+    ];
+
+    works.forEach(work => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${work.name}</span><strong>${money.format(work.price)} ₸</strong>`;
+        listContainer.appendChild(li);
+    });
+
+    document.getElementById('receipt-modal').style.display = 'flex';
+}
+
+function closeReceipt() {
+    document.getElementById('receipt-modal').style.display = 'none';
+}
+
+const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
+
+function calculateDonation() {
+    const kztInput = document.getElementById('kzt-amount').value;
+    const method = document.getElementById('payment-method').value;
+    
+    const baseAmount = parseFloat(kztInput) || 0;
+    const commRate = COMMISSIONS[method];
+    const commission = baseAmount * commRate;
+    const totalPay = baseAmount + commission;
+    const gameMoney = baseAmount * EX_RATE;
+
+    document.getElementById('res-base').innerText = money.format(baseAmount) + ' KZT';
+    document.getElementById('res-comm').innerText = money.format(commission) + ' KZT';
+    document.getElementById('res-total').innerText = money.format(totalPay) + ' KZT';
+    document.getElementById('res-game-money').innerText = formatMoney(gameMoney);
+    
+    return { gameMoney, baseAmount };
+}
+
+async function processDemoPayment() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    
+    if (!user) {
+        alert('Ошибка: Для совершения платежа необходимо войти в личный кабинет!');
+        return;
+    }
+
+    const { gameMoney, baseAmount } = calculateDonation();
+    if (baseAmount < 500) {
+        alert('Минимальная сумма пополнения — 500 KZT');
+        return;
+    }
+
+    document.body.style.cursor = 'wait';
+    state.balance += gameMoney;
+    commit(`Успешно! Пополнение счета (Демо): +${formatMoney(gameMoney)}`);
+    document.body.style.cursor = 'default';
+}
+
+// ==========================================
+// ЛОГИКА РАБОТЫ ЛИЧНОГО КАБИНЕТА (ПОД СТРУКТУРУ ТВОЕЙ ТАБЛИЦЫ)
+// ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-    // Привязываем слушатели к формам авторизации
     document.getElementById('authForm').addEventListener('submit', async (event) => {
         event.preventDefault();
         const email = document.getElementById('authEmail').value;
@@ -23,7 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Переключатель Регистрация / Вход
     const toggleBtn = document.getElementById('authToggleType');
     toggleBtn.addEventListener('click', () => {
         const title = document.getElementById('authTitle');
@@ -51,12 +133,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('logoutButton').onclick = logoutPlayer;
 
-    // Инициализация калькулятора доната при старте
     if (document.getElementById('kzt-amount')) {
         calculateDonation();
     }
     
-    // Проверяем текущую сессию пользователя при запуске сайта
     checkCurrentSession();
 });
 
@@ -72,17 +152,27 @@ async function checkCurrentSession() {
 async function signUp(email, password, username) {
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if (error) {
-        alert('Ошибка регистраии: ' + error.message);
+        alert('Ошибка регистрации: ' + error.message);
         return;
     }
     const user = data.user;
     if (user) {
+        // Запрос адаптирован под твои имена колонок: Id с большой буквы, остальные с маленькой
         const { error: dbError } = await supabaseClient
             .from('profiles')
-            .insert([{ id: user.id, username: username, balance: state.balance }]);
+            .insert([{ 
+                Id: user.id, 
+                username: username, 
+                balance: state.balance,
+                xp: state.xp,
+                reputation: state.reputation,
+                sold_count: state.soldCount,
+                profit_total: state.profitTotal
+            }]);
         
         if (dbError) {
             console.error(dbError);
+            alert('Ошибка создания профиля в БД: ' + dbError.message);
         } else {
             alert('Регистрация успешна! Сессия создана.');
             showProfile(user);
@@ -102,16 +192,19 @@ async function signIn(email, password) {
 async function showProfile(user) {
     document.getElementById("authOverlay").style.display = "none";
     
-    // Подтягиваем никнейм и баланс из облака
+    // Подтягиваем данные из облака с учетом правильного регистра колонок
     const { data, error } = await supabaseClient
         .from('profiles')
-        .select('username, balance')
-        .eq('id', user.id)
+        .select('username, balance, xp, sold_count, profit_total')
+        .eq('Id', user.id)
         .single();
 
     if (!error && data) {
         document.getElementById("playerUsername").textContent = data.username;
         state.balance = data.balance;
+        state.xp = data.xp;
+        state.soldCount = data.sold_count;
+        state.profitTotal = data.profit_total;
         render();
     } else {
         document.getElementById("playerUsername").textContent = user.email.split('@')[0];
@@ -127,10 +220,16 @@ async function logoutPlayer() {
 async function syncBalanceToCloud() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (user) {
+        // Синхронизация данных с учетом твоих названий колонок в Supabase
         await supabaseClient
             .from('profiles')
-            .update({ balance: state.balance })
-            .eq('id', user.id);
+            .update({ 
+                balance: state.balance,
+                xp: state.xp,
+                sold_count: state.soldCount,
+                profit_total: state.profitTotal
+            })
+            .eq('Id', user.id);
     }
 }
 
@@ -452,7 +551,7 @@ function render() {
 
 function renderCompetitorRating() {
   if (!elements.ratingList) return;
-  loadLeaderboard(); // Триггерим загрузку облачных игроков
+  loadLeaderboard(); 
 }
 
 function renderCreditPanel() {
@@ -740,89 +839,6 @@ function resetGame() {
     state = JSON.parse(JSON.stringify(initialState));
     refreshMarket();
   }
-}
-
-// ==========================================
-// НОВЫЙ БЛОК: ДОНАТ, ЧЕК И РЕЙТИНГ (РАБОТАЕТ НА 100%)
-// ==========================================
-
-const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
-
-function calculateDonation() {
-    const kztInput = document.getElementById('kzt-amount').value;
-    const method = document.getElementById('payment-method').value;
-    
-    const baseAmount = parseFloat(kztInput) || 0;
-    const commRate = COMMISSIONS[method];
-    const commission = baseAmount * commRate;
-    const totalPay = baseAmount + commission;
-    const gameMoney = baseAmount * EX_RATE;
-
-    document.getElementById('res-base').innerText = money.format(baseAmount) + ' KZT';
-    document.getElementById('res-comm').innerText = money.format(commission) + ' KZT';
-    document.getElementById('res-total').innerText = money.format(totalPay) + ' KZT';
-    document.getElementById('res-game-money').innerText = formatMoney(gameMoney);
-    
-    return { gameMoney, baseAmount };
-}
-
-async function processDemoPayment() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    
-    if (!user) {
-        alert('Ошибка: Для совершения платежа необходимо войти в личный кабинет!');
-        return;
-    }
-
-    const { gameMoney, baseAmount } = calculateDonation();
-    if (baseAmount < 500) {
-        alert('Минимальная сумма пополнения — 500 KZT');
-        return;
-    }
-
-    document.body.style.cursor = 'wait';
-    state.balance += gameMoney;
-    commit(`Успешно! Пополнение счета (Демо): +${formatMoney(gameMoney)}`);
-    document.body.style.cursor = 'default';
-}
-
-function showReceipt(repairId) {
-    let foundRepair = null;
-    state.garage.forEach(car => {
-        const allRepairs = [...car.visibleRepairs, ...car.hiddenRepairs];
-        const rep = allRepairs.find(r => r.id === repairId);
-        if (rep) foundRepair = rep;
-    });
-
-    const title = foundRepair ? foundRepair.name : "Комплексный ремонт узла автомобиля";
-    let totalCost = foundRepair ? foundRepair.cost : 150000;
-    if (state.upgrades.tools && foundRepair) totalCost = Math.round(totalCost * 0.85);
-
-    document.getElementById('receipt-title').innerText = title;
-    document.getElementById('receipt-total-price').innerText = formatMoney(totalCost);
-
-    const listContainer = document.getElementById('receipt-works-list');
-    listContainer.innerHTML = ''; 
-
-    const partPrice = Math.round(totalCost * 0.65);
-    const workPrice = totalCost - partPrice;
-
-    const works = [
-        { name: "Оригинальные автозапчасти и расходники", price: partPrice },
-        { name: "Технологические нормо-часы механика СТО", price: workPrice }
-    ];
-
-    works.forEach(work => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span>${work.name}</span><strong>${money.format(work.price)} ₸</strong>`;
-        listContainer.appendChild(li);
-    });
-
-    document.getElementById('receipt-modal').style.display = 'flex';
-}
-
-function closeReceipt() {
-    document.getElementById('receipt-modal').style.display = 'none';
 }
 
 async function loadLeaderboard() {
