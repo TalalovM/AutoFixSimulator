@@ -627,4 +627,69 @@ function resetGame() {
     state = JSON.parse(JSON.stringify(initialState));
     refreshMarket();
   }
+  // Настройки бизнес-логики (Курс: 1 тенге = 5 игровых долларов)
+const EX_RATE = 5; 
+const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
+
+// Функция динамического перерасчета кассы
+function calculateDonation() {
+    const kztInput = document.getElementById('kzt-amount').value;
+    const method = document.getElementById('payment-method').value;
+    
+    const baseAmount = parseFloat(kztInput) || 0;
+    const commRate = COMMISSIONS[method];
+    const commission = baseAmount * commRate;
+    const totalPay = baseAmount + commission;
+    const gameMoney = baseAmount * EX_RATE;
+
+    // Обновляем текст в чеке на экране
+    document.getElementById('res-base').innerText = baseAmount + ' KZT';
+    document.getElementById('res-comm').innerText = commission.toFixed(1) + ' KZT';
+    document.getElementById('res-total').innerText = totalPay.toFixed(1) + ' KZT';
+    document.getElementById('res-game-money').innerText = `$` + gameMoney;
+    
+    return { gameMoney, baseAmount };
 }
+
+// Симуляция транзакции и отправка в Supabase
+async function processDemoPayment() {
+    // 1. Проверяем, авторизован ли пользователь в системе
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+        alert('Ошибка: Для совершения платежа необходимо войти в личный кабинет!');
+        return;
+    }
+
+    const { gameMoney, baseAmount } = calculateDonation();
+    if (baseAmount < 500) {
+        alert('Минимальная сумма пополнения — 500 KZT');
+        return;
+    }
+
+    // Имитация задержки банковского эквайринга (меняем курсор на лоадер)
+    document.body.style.cursor = 'wait';
+    
+    // 2. Вызываем нашу безопасную SQL-функцию в Supabase
+    const { error } = await supabase.rpc('increment_balance', {
+        user_id: user.id,
+        amount_to_add: gameMoney
+    });
+
+    document.body.style.cursor = 'default';
+
+    if (error) {
+        console.error(error);
+        alert('Произошла ошибка при проведении платежа: ' + error.message);
+    } else {
+        alert(`Успешно! Демо-платеж обработан.\nЗачислено на аккаунт: $${gameMoney} игровых денег.`);
+        
+        // Перерендерить баланс игрока на главном экране (вызови свою функцию, если она есть)
+        if (typeof updateUIBalance === 'function') updateUIBalance();
+    }
+}
+
+// Запускаем расчет один раз при загрузке страницы, чтобы чек не был пустым
+document.addEventListener("DOMContentLoaded", () => {
+    calculateDonation();
+});
