@@ -358,4 +358,34 @@
   <div id="scrim" class="scrim"></div>
   <script src="app.js"></script>
 </body>
+  </div> </div> <div class="donation-container" style="margin: 20px;">
+        <div class="donation-form">
+            <h3>Пополнение игрового баланса</h3>
+            <label for="kzt-amount">Сумма пополнения (KZT):</label>
+            <input type="number" id="kzt-amount" value="2000" min="500" oninput="calculateDonation()">
+            
+            <label for="payment-method">Способ оплаты:</label>
+            <select id="payment-method" onchange="calculateDonation()">
+                <option value="kaspi">Kaspi.kz (Комиссия: 0%)</option>
+                <option value="card">Банковская карта Visa/MC (Комиссия: 2.5%)</option>
+                <option value="crypto">Криптовалюта USDT (Комиссия: 1%)</option>
+            </select>
+        </div>
+
+        <div class="donation-receipt">
+            <h4>Детали платежа</h4>
+            <div class="receipt-row"><span>Стоимость:</span><span id="res-base">0 KZT</span></div>
+            <div class="receipt-row"><span>Комиссия системы:</span><span id="res-comm">0 KZT</span></div>
+            <hr style="border-color: #263447;">
+            <div class="receipt-row total"><span>Итого к оплате:</span><span id="res-total">0 KZT</span></div>
+            <div class="receipt-row bonus"><span>Будет зачислено:</span><strong id="res-game-money">$0</strong></div>
+            
+            <button onclick="processDemoPayment()" class="primary-button" type="button" style="width: 100%; margin-top: 15px;">
+                Оплатить (Демо-режим)
+            </button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
 </html>
+
