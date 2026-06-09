@@ -316,19 +316,40 @@ const elements = {
   scrim: document.querySelector("#scrim")
 };
 
-if (state.marketCars.length === 0) refreshMarket();
+if (state.marketCars.length === 0) {
+    refreshMarket();
+}
 
-document.querySelectorAll("[data-view], [data-switch]").forEach(btn => {
-  btn.addEventListener("click", () => switchView(btn.dataset.view || btn.dataset.switch));
+document.querySelectorAll("[data-view], [data-switch]").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+      switchView(btn.dataset.view || btn.dataset.switch);
+  });
 });
+
 document.querySelector("#newDealsButton").addEventListener("click", refreshMarket);
 document.querySelector("#resetButton").addEventListener("click", resetGame);
-elements.menuButton.addEventListener("click", () => document.body.classList.add("menu-open"));
-elements.scrim.addEventListener("click", () => document.body.classList.remove("menu-open"));
+elements.menuButton.addEventListener("click", function() {
+    document.body.classList.add("menu-open");
+});
+elements.scrim.addEventListener("click", function() {
+    document.body.classList.remove("menu-open");
+});
 
-document.querySelector("#searchInput")?.addEventListener("input", renderMarket);
-document.querySelector("#conditionFilter")?.addEventListener("change", renderMarket);
-document.querySelector("#dealFilter")?.addEventListener("change", renderMarket);
+// ИСПРАВЛЕННЫЕ СТРОКИ: без знаков ?.
+var elSearch = document.querySelector("#searchInput");
+if (elSearch) {
+    elSearch.addEventListener("input", renderMarket);
+}
+
+var elCond = document.querySelector("#conditionFilter");
+if (elCond) {
+    elCond.addEventListener("change", renderMarket);
+}
+
+var elDeal = document.querySelector("#dealFilter");
+if (elDeal) {
+    elDeal.addEventListener("change", renderMarket);
+}
 
 injectAnalyticsContainers();
 render();
