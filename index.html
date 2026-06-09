@@ -7,83 +7,10 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
-  <style>
-    .auth-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(11, 17, 26, 0.95);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .auth-card {
-      background: #111a26;
-      border: 1px solid #263447;
-      border-radius: 12px;
-      padding: 32px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
-      text-align: center;
-    }
-    .auth-card h2 { margin-top: 0; margin-bottom: 12px; color: #f4f7fb; }
-    .auth-card p { color: #9aa7b7; font-size: 14px; margin-bottom: 24px; }
-    .auth-form { display: flex; flex-direction: column; gap: 16px; text-align: left; }
-    .auth-form label { color: #9aa7b7; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
-    .auth-form input {
-      background: #0b111a;
-      border: 1px solid #263447;
-      padding: 10px 14px;
-      border-radius: 6px;
-      color: #f4f7fb;
-      font-size: 15px;
-    }
-    .auth-form input:focus { border-color: #2f6df6; outline: none; }
-    .auth-toggle-btn {
-      background: none; border: none; color: #2f6df6; cursor: pointer; font-size: 14px; margin-top: 16px; text-decoration: underline;
-    }
-    .auth-card .primary-button { width: 100%; padding: 12px; margin-top: 8px; }
-    .logout-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid #263447; }
-    .modal {
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-    }
-    .modal-content {
-        background-color: #111a26; /* Изменил на твой темно-синий цвет, чтобы подходил под дизайн */
-        color: #f4f7fb;            /* Белый текст */
-        border: 1px solid #263447;
-        margin: 15% auto;
-        padding: 20px;
-        border-radius: 8px;
-        width: 400px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    .close-button {
-        float: right;
-        font-size: 28px;
-        cursor: pointer;
-        color: #9aa7b7;
-    }
-    .close-button:hover { color: #f4f7fb; }
-    #receipt-works-list li {
-        display: flex;
-        justify-content: space-between;
-        margin: 5px 0;
-        color: #9aa7b7;
-    }
-  </style>
 </head>
 <body>
 
-  <div id="authOverlay" class="auth-overlay" style="display: none;">
+  <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
       <h2 id="authTitle">Регистрация мастера</h2>
       <p id="authDesc">Создайте аккаунт, чтобы попасть в облачный рейтинг механиков.</p>
@@ -111,7 +38,7 @@
   <div class="app-layout">
     <aside class="sidebar" aria-label="Главное меню">
       <div class="logo">
-        <span class="logo-mark">AF</span>
+        <img src="Лого сайта.png" alt="AutoFix Logo" class="logo-img">
         <strong>AutoFix</strong>
       </div>
       <nav class="side-nav">
@@ -129,309 +56,179 @@
     <div class="content-shell">
       <header class="topbar">
         <button id="menuButton" class="menu-button" type="button" aria-label="Открыть меню">Меню</button>
-        <section class="stats-strip" aria-label="Показатели игрока">
-          <article class="top-stat">
-            <span class="stat-icon">₸</span>
-            <div>
-              <span>Баланс</span>
-              <strong id="balanceText">0 ₸</strong>
-            </div>
-          </article>
-          <article class="top-stat">
-            <span class="stat-icon">XP</span>
-            <div>
-              <span>Опыт</span>
-              <strong id="xpText">0 / 1000</strong>
-            </div>
-          </article>
-          <article class="top-stat">
-            <span class="stat-icon">%</span>
-            <div>
-              <span>Репутация</span>
-              <strong id="reputationText">0%</strong>
-            </div>
-          </article>
-          <article class="top-stat">
-            <span class="stat-icon">A</span>
-            <div>
-              <span>Продано машин</span>
-              <strong id="soldText">0</strong>
-            </div>
-          </article>
-        </section>
-        <div class="profile-card">
-          <span class="avatar" id="avatarLetter">M</span>
+        
+        <div class="user-profile-badge">
+          <div class="profile-avatar">🛠️</div>
           <div>
-            <strong id="profileName">Загрузка...</strong>
-            <span id="levelText">Уровень 1</span>
+            <span id="playerUsername" class="profile-name">Загрузка...</span><br>
+            <span class="profile-status">Авторизован</span>
           </div>
         </div>
+
+        <section class="stats-strip" aria-label="Показатели игрока">
+          <div class="stat-node"><span class="stat-label">Оборотный капитал</span><strong id="balanceText">0 ₸</strong></div>
+          <div class="stat-node"><span class="stat-label">Опыт (XP)</span><strong id="xpText">0 / 5000</strong></div>
+          <div class="stat-node"><span class="stat-label">Репутация СТО</span><strong id="reputationText">0%</strong></div>
+          <div class="stat-node"><span class="stat-label">Реализовано авто</span><strong id="soldText">0</strong></div>
+          <div class="stat-node text-right"><strong id="levelText" class="level-badge">Ранг: 1 Инженер</strong></div>
+        </section>
       </header>
 
-      <main>
-        <section id="homeView" class="view is-visible">
-          <section class="hero-panel">
-            <div class="hero-copy">
-              <h1>Добро пожаловать в AutoFix</h1>
-              <p>Покупайте автомобили, проводите диагностику, находите скрытые поломки и продавайте машины с умом.</p>
-              <button class="primary-button" type="button" data-switch="market">К рынку автомобилей</button>
+      <main class="main-viewport">
+        <div id="homeView" class="view is-visible">
+          <div class="donation-container">
+            <div class="donation-form">
+              <h3>Пополнение баланса (Демо)</h3>
+              <p style="font-size: 13px; color: var(--muted); margin-bottom: 15px;">Закончились средства для выкупа авто? Пополните счет через симулятор платежной кассы.</p>
+              
+              <label for="kzt-amount">Сумма взноса (KZT):
+                <input type="number" id="kzt-amount" value="2000" min="500" oninput="calculateDonation()">
+              </label>
+              
+              <label for="payment-method">Платежный шлюз:
+                <select id="payment-method" onchange="calculateDonation()">
+                  <option value="kaspi">Kaspi.kz (Комиссия: 0%)</option>
+                  <option value="card">Банковская карта Visa/MC (Комиссия: 2.5%)</option>
+                  <option value="crypto">Криптовалюта USDT (Комиссия: 1%)</option>
+                </select>
+              </label>
             </div>
-            <img src="assets/mercedes-w204.jpg" alt="Автомобиль в мастерской">
-          </section>
 
-          <section class="home-grid">
-            <article class="panel panel-wide">
-              <div class="panel-heading">
-                <h2>Рынок автомобилей</h2>
-                <button class="link-button" type="button" data-switch="market">Смотреть все</button>
-              </div>
-              <div id="homeMarketList" class="compact-cards"></div>
-            </article>
-
-            <article class="panel">
-              <div class="panel-heading">
-                <h2>Мой гараж</h2>
-                <button class="link-button" type="button" data-switch="garage">Смотреть все</button>
-              </div>
-              <div id="homeGarageList"></div>
-            </article>
-
-            <article class="panel panel-wide">
-              <div class="panel-heading">
-                <h2>События</h2>
-                <button class="link-button" type="button" data-switch="events">Смотреть все</button>
-              </div>
-              <div id="homeEventsList" class="event-list"></div>
-            </article>
-
-            <article class="panel">
-              <div class="panel-heading">
-                <h2>Топ механиков</h2>
-                <button class="link-button" type="button" data-switch="rating">Смотреть все</button>
-              </div>
-              <div id="homeRatingList" class="rating-list"></div>
-            </article>
-          </section>
-        </section>
-
-        <section id="marketView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Сделки без повторов</p>
-              <h1>Рынок автомобилей</h1>
-            </div>
-            <button id="newDealsButton" class="secondary-button" type="button">Обновить порядок</button>
-          </div>
-
-          <section class="filters" aria-label="Фильтры рынка">
-            <label>
-              Поиск
-              <input id="searchInput" type="search" placeholder="Марка или модель">
-            </label>
-            <label>
-              Состояние
-              <select id="conditionFilter">
-                <option value="all">Любое</option>
-                <option value="poor">Плохое</option>
-                <option value="fair">Среднее</option>
-                <option value="good">Хорошее</option>
-              </select>
-            </label>
-            <label>
-              Прогноз
-              <select id="dealFilter">
-                <option value="all">Все сделки</option>
-                <option value="positive">Возможный плюс</option>
-                <option value="danger">Риск минуса</option>
-              </select>
-            </label>
-          </section>
-
-          <div id="marketList" class="car-grid"></div>
-        </section>
-
-        <section id="garageView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Ваши автомобили</p>
-              <h1>Мой гараж</h1>
+            <div class="donation-receipt">
+              <h4>Спецификация транзакции</h4>
+              <div class="receipt-row"><span>Базовая стоимость:</span><span id="res-base">0 KZT</span></div>
+              <div class="receipt-row"><span>Комиссия шлюза:</span><span id="res-comm">0 KZT</span></div>
+              <hr>
+              <div class="receipt-row total"><span>Итого к оплате:</span><span id="res-total">0 KZT</span></div>
+              <div class="receipt-row bonus"><span>Будет зачислено:</span><strong id="res-game-money">$0</strong></div>
+              
+              <button onclick="processDemoPayment()" class="primary-button" type="button" style="width: 100%; margin-top: 15px;">
+                Подтвердить операцию
+              </button>
             </div>
           </div>
+        </div>
+
+        <div id="marketView" class="view">
+          <div class="filter-bar">
+            <input type="search" id="searchInput" class="filter-input" placeholder="Поиск по марке автомобиля...">
+            <select id="conditionFilter" class="filter-input">
+              <option value="all">Все состояния</option>
+              <option value="poor">Критическое</option>
+              <option value="fair">Удовлетворительное</option>
+              <option value="good">Стабильное</option>
+            </select>
+            <select id="dealFilter" class="filter-input">
+              <option value="all">Все предложения</option>
+              <option value="positive">Высокорентабельные (В плюс)</option>
+              <option value="danger">Высокорисковые</option>
+            </select>
+          </div>
+          <div id="marketList" class="market-grid"></div>
+        </div>
+
+        <div id="garageView" class="view">
           <div id="garageList" class="garage-grid"></div>
-        </section>
+        </div>
 
-        <section id="repairView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Диагностика и ремонт</p>
-              <h1>Ремонт</h1>
-            </div>
-          </div>
+        <div id="repairView" class="view">
           <div id="repairList" class="garage-grid"></div>
-        </section>
+        </div>
 
-        <section id="saleView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Финальный расчёт</p>
-              <h1>Продажа авто</h1>
-            </div>
-          </div>
+        <div id="saleView" class="view">
           <div id="saleList" class="garage-grid"></div>
-        </section>
+        </div>
 
-        <section id="eventsView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Журнал мастерской</p>
-              <h1>События</h1>
-            </div>
-          </div>
-          <div id="eventsList" class="event-list"></div>
-        </section>
+        <div id="eventsView" class="view">
+          <h2 style="margin-top:0; color:var(--blue);">📖 Экономический архив и логирование СТО</h2>
+          <div id="eventsList" class="events-feed"></div>
+        </div>
 
-        <section id="ratingView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Сравнение игроков</p>
-              <h1>Рейтинг</h1>
-            </div>
-          </div>
-          <div class="panel">
-            <div id="leaderboard-list"></div>
-          </div>
-        </section>
+        <div id="ratingView" class="view">
+          <h2 style="margin-top:0; color:var(--blue); margin-bottom:20px;">🏆 Глобальный институциональный рейтинг автопредприятий</h2>
+          <div id="ratingList"></div>
+        </div>
 
-        <section id="settingsView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Управление прогрессом</p>
-              <h1>Настройки</h1>
+        <div id="settingsView" class="view">
+          <h2 style="margin-top:0; color:var(--blue);">⚙️ Системные параметры платформы</h2>
+          <div class="settings-card">
+            <h3>Управление сессией</h3>
+            <p style="color:var(--muted); font-size:14px;">Вы можете полностью обнулить локальный кэш оборотного фонда СТО или завершить текущую облачную сессию.</p>
+            <div style="display:flex; gap:15px; margin-top:20px;">
+              <button id="resetButton" class="secondary-button" style="border-color:var(--red); color:var(--red);">Сбросить весь прогресс (Локально)</button>
+              <button id="logoutButton" class="primary-button" style="background:#ef4444;">Выйти из личного кабинета</button>
             </div>
           </div>
-          <article class="panel settings-panel">
-            <h2>Новая игра</h2>
-            <p>Очистит купленные автомобили, гараж, события и финансовую историю.</p>
-            <button id="resetButton" class="danger-button" type="button">Начать заново</button>
-            
-            <div class="logout-section">
-              <h2>Аккаунт</h2>
-              <p>Вы можете выйти из текущего профиля механика.</p>
-              <button id="logoutButton" class="secondary-button" type="button">Выйти из аккаунта</button>
-            </div>
-          </article>
-        </section>
+          <div id="creditPanel" class="settings-card" style="margin-top:25px;"></div>
+        </div>
       </main>
     </div>
   </div>
 
   <template id="marketCardTemplate">
-    <article class="market-card">
-      <img class="car-image" src="" alt="">
+    <article class="car-card">
+      <div class="card-media"><img src="" alt="" class="car-image"></div>
       <div class="card-body">
-        <div class="card-title">
+        <header class="card-header">
           <h2></h2>
           <span class="condition-badge"></span>
-        </div>
+        </header>
         <p class="car-meta"></p>
-        <div class="price-line">
-          <span>Цена</span>
-          <strong class="price-text"></strong>
+        <div class="financial-forecast">
+          <div class="forecast-node"><span class="node-label">Цена выкупа</span><strong class="price-text"></strong></div>
+          <div class="forecast-node"><span class="node-label">Известный ремонт</span><strong class="visible-cost"></strong></div>
+          <div class="forecast-node"><span class="node-label">Прогноз маржи</span><strong class="forecast-text"></strong></div>
         </div>
-        <div class="mini-stats">
-          <div><span>Видимый ремонт</span><strong class="visible-cost"></strong></div>
-          <div><span>Прогноз</span><strong class="forecast-text"></strong></div>
-        </div>
-        <p class="risk-text"></p>
-        <button class="primary-button buy-button" type="button">Купить</button>
+        <button class="primary-button buy-button" type="button">Заключить договор выкупа</button>
       </div>
     </article>
   </template>
 
   <template id="garageCardTemplate">
-    <article class="garage-card">
-      <div class="garage-top">
-        <img class="garage-image" src="" alt="">
-        <div>
-          <div class="card-title">
-            <h2></h2>
-            <span class="profit-badge"></span>
-          </div>
-          <p class="garage-meta"></p>
+    <article class="car-card">
+      <div class="card-media"><img src="" alt="" class="car-image"></div>
+      <div class="card-body">
+        <header class="card-header">
+          <h2></h2>
+          <span class="profit-badge"></span>
+        </header>
+        <div class="health-indicator">
+          <span>Общая исправность (КТГ):</span>
+          <strong class="health-text">0%</strong>
         </div>
-      </div>
-
-      <div class="condition-box">
-        <div class="condition-total">
-          <span>Состояние автомобиля</span>
-          <strong class="health-text"></strong>
+        <div class="balance-sheet">
+          <div class="sheet-row"><span>Затраты на приобретение:</span><strong class="purchase-text"></strong></div>
+          <div class="sheet-row"><span>Капитализация ремонта:</span><strong class="repair-text"></strong></div>
+          <div class="sheet-row"><span>Текущая рыночная оценка:</span><strong class="value-text"></strong></div>
+          <div class="sheet-row total"><span>Финансовый результат операции:</span><strong class="result-text"></strong></div>
         </div>
-        <div class="system-bars"></div>
-      </div>
-
-      <div class="mini-stats garage-money">
-        <div><span>Куплен</span><strong class="purchase-text"></strong></div>
-        <div><span>Ремонт</span><strong class="repair-text"></strong></div>
-        <div><span>Оценка</span><strong class="value-text"></strong></div>
-        <div><span>Итог</span><strong class="result-text"></strong></div>
-      </div>
-
-      <div class="diagnostic-note"></div>
-      <div class="repair-items"></div>
-
-      <div class="garage-actions">
-        <button class="secondary-button diagnose-button" type="button">Диагностика</button>
-        <button class="primary-button sell-button" type="button">Продать</button>
+        <div class="repair-items"></div>
+        <div class="garage-actions">
+          <button class="primary-button diagnose-button" type="button">Комплексная дефектовка узлов</button>
+          <button class="primary-button sell-button" type="button" style="background:var(--green);">Реализовать актив на аукционе</button>
+        </div>
       </div>
     </article>
   </template>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="toast" class="toast" role="alert"></div>
   <div id="scrim" class="scrim"></div>
-  
-</body>
-  </div> </div> <div class="donation-container" style="margin: 20px;">
-        <div class="donation-form">
-            <h3>Пополнение игрового баланса</h3>
-            <label for="kzt-amount">Сумма пополнения (KZT):</label>
-            <input type="number" id="kzt-amount" value="2000" min="500" oninput="calculateDonation()">
-            
-            <label for="payment-method">Способ оплаты:</label>
-            <select id="payment-method" onchange="calculateDonation()">
-                <option value="kaspi">Kaspi.kz (Комиссия: 0%)</option>
-                <option value="card">Банковская карта Visa/MC (Комиссия: 2.5%)</option>
-                <option value="crypto">Криптовалюта USDT (Комиссия: 1%)</option>
-            </select>
-        </div>
 
-        <div class="donation-receipt">
-            <h4>Детали платежа</h4>
-            <div class="receipt-row"><span>Стоимость:</span><span id="res-base">0 KZT</span></div>
-            <div class="receipt-row"><span>Комиссия системы:</span><span id="res-comm">0 KZT</span></div>
-            <hr style="border-color: #263447;">
-            <div class="receipt-row total"><span>Итого к оплате:</span><span id="res-total">0 KZT</span></div>
-            <div class="receipt-row bonus"><span>Будет зачислено:</span><strong id="res-game-money">$0</strong></div>
-            
-            <button onclick="processDemoPayment()" class="primary-button" type="button" style="width: 100%; margin-top: 15px;">
-                Оплатить (Демо-режим)
-            </button>
-        </div>
-    </div>
   <div id="receipt-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeReceipt()">&times;</span>
-            <h2>Квитанция об оплате / Чек</h2>
-            <h3 id="receipt-title">Название ремонта</h3>
-            <hr>
-            <ul id="receipt-works-list"></ul>
-            <hr>
-            <div class="receipt-total">
-                <strong>Итого: <span id="receipt-total-price">$0</span></strong>
-            </div>
-        </div>
+    <div class="modal-content">
+      <span class="close-button" onclick="closeReceipt()">&times;</span>
+      <h2>Квитанция об оплате</h2>
+      <h3 id="receipt-title">Заказ-наряд №4112</h3>
+      <hr>
+      <ul id="receipt-works-list"></ul>
+      <hr>
+      <div class="receipt-total">
+        <strong>Итого к оплате:</strong>
+        <span id="receipt-total-price">0 ₸</span>
+      </div>
     </div>
+  </div>
 
-    <script src="app.js"></script>
+  <script src="app V2.0.js"></script>
 </body>
 </html>
-
