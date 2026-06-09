@@ -72,7 +72,7 @@ async function checkCurrentSession() {
 async function signUp(email, password, username) {
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if (error) {
-        alert('Ошибка регистрации: ' + error.message);
+        alert('Ошибка регистраии: ' + error.message);
         return;
     }
     const user = data.user;
