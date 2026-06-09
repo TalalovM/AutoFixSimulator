@@ -735,7 +735,6 @@ async function processDemoPayment() {
 document.addEventListener("DOMContentLoaded", () => {
     calculateDonation();
 });
-const EX_RATE = 5; 
 const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
 
 function calculateDonation() { ... }
