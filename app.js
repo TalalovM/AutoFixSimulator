@@ -611,7 +611,17 @@ function renderGarageCollection(container, mode) {
         const btn = document.createElement("button");
         btn.className = "secondary-button";
         btn.textContent = "Устранить";
-        btn.onclick = () => repairCar(car.instanceId, r.id);
+       btn.onclick = () => {
+    // 1. Запускаем твой стандартный ремонт машины
+    repairCar(car.instanceId, r.id); 
+    
+    // 2. Автоматически открываем чек. 
+    // r.id — это ID поломки. Если он совпадает с 'engine_overhaul' или 'brake_replacement', 
+    // чек сразу заполнится правильными 
+    if (typeof showReceipt === 'function') {
+        showReceipt(r.id); 
+    }
+};
         item.append(btn);
       }
       list.append(item);
