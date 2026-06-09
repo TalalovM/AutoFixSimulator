@@ -735,11 +735,6 @@ async function processDemoPayment() {
 document.addEventListener("DOMContentLoaded", () => {
     calculateDonation();
 });
-    
-
-
-function calculateDonation() { ... }
-async function processDemoPayment() { ... }
     const repairDetails = {
     engine_overhaul: {
         title: "Капитальный ремонт двигателя",
