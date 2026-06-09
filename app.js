@@ -6,44 +6,134 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Объявляем глобальную константу курса ОДИН раз для всего файла на самом верху:
 const EX_RATE = 5; 
 
-async function signUp(email, password, username) {
-    // 1. Регистрируем пользователя в системе атентификации
-    const { data, error } = await supabaseClient.auth.signUp({
-        email: email,
-        password: password,
+// Блокировка форм и логика работы Личного Кабинета
+document.addEventListener("DOMContentLoaded", () => {
+    // Привязываем слушатели к формам авторизации
+    document.getElementById('authForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = document.getElementById('authEmail').value;
+        const password = document.getElementById('authPassword').value;
+        const usernameInput = document.getElementById('authUsername');
+        
+        if (usernameInput && usernameInput.hasAttribute('required')) {
+            const username = usernameInput.value;
+            await signUp(email, password, username);
+        } else {
+            await signIn(email, password);
+        }
     });
 
+    // Переключатель Регистрация / Вход
+    const toggleBtn = document.getElementById('authToggleType');
+    toggleBtn.addEventListener('click', () => {
+        const title = document.getElementById('authTitle');
+        const desc = document.getElementById('authDesc');
+        const userLabel = document.getElementById('usernameLabel');
+        const userInp = document.getElementById('authUsername');
+        const submitBtn = document.getElementById('authSubmitBtn');
+
+        if (userInp.hasAttribute('required')) {
+            title.textContent = "Вход в СТО";
+            desc.textContent = "Введите данные мастера, чтобы восстановить баланс и сессию.";
+            userLabel.style.display = "none";
+            userInp.removeAttribute('required');
+            submitBtn.textContent = "Войти";
+            toggleBtn.textContent = "Нет аккаунта? Зарегистрироваться";
+        } else {
+            title.textContent = "Регистрация мастера";
+            desc.textContent = "Создайте аккаунт, чтобы попасть в облачный рейтинг механиков.";
+            userLabel.style.display = "flex";
+            userInp.setAttribute('required', 'required');
+            submitBtn.textContent = "Зарегистрироваться";
+            toggleBtn.textContent = "Уже есть аккаунт? Войти";
+        }
+    });
+
+    document.getElementById('logoutButton').onclick = logoutPlayer;
+
+    // Инициализация калькулятора доната при старте
+    if (document.getElementById('kzt-amount')) {
+        calculateDonation();
+    }
+    
+    // Проверяем текущую сессию пользователя при запуске сайта
+    checkCurrentSession();
+});
+
+async function checkCurrentSession() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user) {
+        showProfile(session.user);
+    } else {
+        document.getElementById("authOverlay").style.display = "flex";
+    }
+}
+
+async function signUp(email, password, username) {
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if (error) {
         alert('Ошибка регистрации: ' + error.message);
         return;
     }
-
-    // 2. Если регистрация успешна, создаем запись в нашей таблице игроков
     const user = data.user;
     if (user) {
         const { error: dbError } = await supabaseClient
             .from('profiles')
-            .insert([{ id: user.id, username: username, balance: 0 }]); // Стартовый баланс 0
+            .insert([{ id: user.id, username: username, balance: state.balance }]);
         
-        if (dbError) console.error(dbError);
-        else alert('Регистрация успешна! Проверьте почту для подтверждения (если включено).');
+        if (dbError) {
+            console.error(dbError);
+        } else {
+            alert('Регистрация успешна! Сессия создана.');
+            showProfile(user);
+        }
     }
 }
 
 async function signIn(email, password) {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-    });
-
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
         alert('Ошибка входа: ' + error.message);
     } else {
-        alert('Вы успешно вошли!');
-        // Перенаправляем в личный кабинет / обновляем интерфейс
         showProfile(data.user);
     }
 }
+
+async function showProfile(user) {
+    document.getElementById("authOverlay").style.display = "none";
+    
+    // Подтягиваем никнейм и баланс из облака
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('username, balance')
+        .eq('id', user.id)
+        .single();
+
+    if (!error && data) {
+        document.getElementById("playerUsername").textContent = data.username;
+        state.balance = data.balance;
+        render();
+    } else {
+        document.getElementById("playerUsername").textContent = user.email.split('@')[0];
+    }
+}
+
+async function logoutPlayer() {
+    await supabaseClient.auth.signOut();
+    localStorage.removeItem(storageKey);
+    window.location.reload();
+}
+
+async function syncBalanceToCloud() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) {
+        await supabaseClient
+            .from('profiles')
+            .update({ balance: state.balance })
+            .eq('id', user.id);
+    }
+}
+
 const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const storageKey = "autoFixIndustrialSim_v5";
 
@@ -362,29 +452,7 @@ function render() {
 
 function renderCompetitorRating() {
   if (!elements.ratingList) return;
-  const baseCompetitors = [
-    { name: "Astana Motors Trade", capBase: 4500000, rep: 90, icon: "🏢" },
-    { name: "Almaty Car-Recycling Corp", capBase: 2800000, rep: 60, icon: "🏭" },
-    { name: "Шокан и Партнеры (ИП)", capBase: 1200000, rep: 85, icon: "🛠️" },
-    { name: "Перекуп Сейфуллина Сити", capBase: 600000, rep: 40, icon: "🚗" }
-  ];
-  const entities = [{ name: "Ваше Предприятие (Вы)", capBase: state.balance + state.totalInvested, rep: state.reputation, icon: "⭐", isPlayer: true }, ...baseCompetitors];
-  entities.sort((a, b) => b.capBase - a.capBase);
-
-  elements.ratingList.innerHTML = "";
-  entities.forEach((entity, index) => {
-    const card = document.createElement("div");
-    card.style.cssText = `display:flex; align-items:center; justify-content:space-between; padding:15px; margin-bottom:10px; border-radius:8px; border:1px solid var(--line); ${entity.isPlayer ? 'background: rgba(47, 109, 246, 0.15); border-color: var(--blue); font-weight: bold;' : 'background: var(--panel);'}`;
-    card.innerHTML = `
-      <div style="display:flex; align-items:center; gap:15px;">
-        <span style="font-size:18px; color:var(--muted); width:25px;">#${index + 1}</span>
-        <span style="font-size:24px;">${entity.icon}</span>
-        <div><span style="color:var(--text);">${entity.name}</span><br><span style="font-size:12px; color:var(--muted);">Репутация: ${entity.rep}%</span></div>
-      </div>
-      <strong style="color:${entity.isPlayer ? 'var(--blue)' : 'var(--text)'};">${formatMoney(Math.round(entity.capBase))}</strong>
-    `;
-    elements.ratingList.appendChild(card);
-  });
+  loadLeaderboard(); // Триггерим загрузку облачных игроков
 }
 
 function renderCreditPanel() {
@@ -435,7 +503,7 @@ function renderDashboard() {
       <div><span style="color:var(--muted);font-size:13px;">Чистая рентабельность (ROI)</span><br><strong style="font-size:20px;color:var(--green);">${roi}%</strong></div>
       <div><span style="color:var(--muted);font-size:13px;">Общая накопленная прибыль</span><br><strong style="font-size:20px;">${formatMoney(state.profitTotal)}</strong></div>
       <div><span style="color:var(--muted);font-size:13px;">Средняя маржа с объекта</span><br><strong style="font-size:20px;color:var(--amber);">${formatMoney(avgProfit)}</strong></div>
-      <div><span style="color:var(--muted);font-size:13px;">Инвестиции in основные фонды</span><br><strong style="font-size:20px;">${formatMoney(state.totalInvested)}</strong></div>
+      <div><span style="color:var(--muted);font-size:13px;">Инвестиции в основные фонды</span><br><strong style="font-size:20px;">${formatMoney(state.totalInvested)}</strong></div>
     </div>
     <div style="background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--line);">
       <span style="font-size:12px; color:var(--muted);">Текущий макроэкономический статус:</span>
@@ -612,9 +680,7 @@ function renderGarageCollection(container, mode) {
         btn.textContent = "Устранить";
         btn.onclick = () => {
             repairCar(car.instanceId, r.id); 
-            if (typeof showReceipt === 'function') {
-                showReceipt(r.id); 
-            }
+            showReceipt(r.id); 
         };
         item.append(btn);
       }
@@ -637,7 +703,7 @@ function renderGarageCollection(container, mode) {
   });
 }
 
-function commit(msg) { saveState(); render(); showToast(msg); }
+function commit(msg) { saveState(); render(); showToast(msg); syncBalanceToCloud(); }
 function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
 function loadState() {
   const saved = localStorage.getItem(storageKey);
@@ -677,7 +743,7 @@ function resetGame() {
 }
 
 // ==========================================
-// НОВЫЙ БЛОК: ДОНАТ, ЧЕК И РЕЙТИНГ (ВЫНЕСЕНЫ ИЗ RESETGAME)
+// НОВЫЙ БЛОК: ДОНАТ, ЧЕК И РЕЙТИНГ (РАБОТАЕТ НА 100%)
 // ==========================================
 
 const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
@@ -692,10 +758,10 @@ function calculateDonation() {
     const totalPay = baseAmount + commission;
     const gameMoney = baseAmount * EX_RATE;
 
-    document.getElementById('res-base').innerText = baseAmount + ' KZT';
-    document.getElementById('res-comm').innerText = commission.toFixed(1) + ' KZT';
-    document.getElementById('res-total').innerText = totalPay.toFixed(1) + ' KZT';
-    document.getElementById('res-game-money').innerText = `$` + gameMoney;
+    document.getElementById('res-base').innerText = money.format(baseAmount) + ' KZT';
+    document.getElementById('res-comm').innerText = money.format(commission) + ' KZT';
+    document.getElementById('res-total').innerText = money.format(totalPay) + ' KZT';
+    document.getElementById('res-game-money').innerText = formatMoney(gameMoney);
     
     return { gameMoney, baseAmount };
 }
@@ -715,63 +781,44 @@ async function processDemoPayment() {
     }
 
     document.body.style.cursor = 'wait';
-    
-    const { error } = await supabaseClient.rpc('increment_balance', {
-        user_id: user.id,
-        amount_to_add: gameMoney
-    });
-
+    state.balance += gameMoney;
+    commit(`Успешно! Пополнение счета (Демо): +${formatMoney(gameMoney)}`);
     document.body.style.cursor = 'default';
-
-    if (error) {
-        console.error(error);
-        alert('Произошла ошибка при проведении платежа: ' + error.message);
-    } else {
-        alert(`Успешно! Демо-платеж обработан.\nЗачислено на аккаунт: $${gameMoney} игровых денег.`);
-        if (typeof updateUIBalance === 'function') updateUIBalance();
-    }
 }
 
-const repairDetails = {
-    engine_overhaul: {
-        title: "Капитальный ремонт двигателя",
-        total: 1500,
-        works: [
-            { name: "Демонтаж и монтаж ДВС", price: 400 },
-            { name: "Замена поршневых колец", price: 500 },
-            { name: "Шлифовка коленвала", price: 300 },
-            { name: "Расходные материалы (масло, прокладки)", price: 300 }
-        ]
-    },
-    brake_replacement: {
-        title: "Замена тормозной системы",
-        total: 350,
-        works: [
-            { name: "Замена передних тормозных дисков", price: 150 },
-            { name: "Замена колодок (в круг)", price: 100 },
-            { name: "Прокачка тормозной жидкости", price: 50 },
-            { name: "Работа мастера", price: 50 }
-        ]
-    }
-};
-
 function showReceipt(repairId) {
-    const repair = repairDetails[repairId];
-    if (!repair) return;
+    let foundRepair = null;
+    state.garage.forEach(car => {
+        const allRepairs = [...car.visibleRepairs, ...car.hiddenRepairs];
+        const rep = allRepairs.find(r => r.id === repairId);
+        if (rep) foundRepair = rep;
+    });
 
-    document.getElementById('receipt-title').innerText = repair.title;
-    document.getElementById('receipt-total-price').innerText = `$${repair.total}`;
+    const title = foundRepair ? foundRepair.name : "Комплексный ремонт узла автомобиля";
+    let totalCost = foundRepair ? foundRepair.cost : 150000;
+    if (state.upgrades.tools && foundRepair) totalCost = Math.round(totalCost * 0.85);
+
+    document.getElementById('receipt-title').innerText = title;
+    document.getElementById('receipt-total-price').innerText = formatMoney(totalCost);
 
     const listContainer = document.getElementById('receipt-works-list');
     listContainer.innerHTML = ''; 
 
-    repair.works.forEach(work => {
+    const partPrice = Math.round(totalCost * 0.65);
+    const workPrice = totalCost - partPrice;
+
+    const works = [
+        { name: "Оригинальные автозапчасти и расходники", price: partPrice },
+        { name: "Технологические нормо-часы механика СТО", price: workPrice }
+    ];
+
+    works.forEach(work => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>${work.name}</span> — <strong>$${work.price}</strong>`;
+        li.innerHTML = `<span>${work.name}</span><strong>${money.format(work.price)} ₸</strong>`;
         listContainer.appendChild(li);
     });
 
-    document.getElementById('receipt-modal').style.display = 'block';
+    document.getElementById('receipt-modal').style.display = 'flex';
 }
 
 function closeReceipt() {
@@ -785,25 +832,41 @@ async function loadLeaderboard() {
         .order('balance', { ascending: false }) 
         .limit(10); 
 
-    if (error) {
-        console.error('Ошибка загрузки рейтинга:', error);
-        return;
-    }
-
-    const container = document.getElementById('leaderboard-list');
+    const container = document.getElementById('ratingList');
     if (!container) return; 
-    container.innerHTML = ''; 
+    container.innerHTML = "";
 
-    data.forEach((player, index) => {
-        const playerRow = document.createElement('div');
-        playerRow.className = 'rating-item';
-        playerRow.innerHTML = `<span>${index + 1}. ${player.username}</span> — <span>$${player.balance}</span>`;
-        container.appendChild(playerRow);
-    }); 
-}
+    const baseCompetitors = [
+      { name: "Astana Motors Trade", capBase: 4500000, rep: 90, icon: "🏢" },
+      { name: "Almaty Car-Recycling Corp", capBase: 2800000, rep: 60, icon: "🏭" },
+      { name: "Шокан и Партнеры (ИП)", capBase: 1200000, rep: 85, icon: "🛠️" }
+    ];
 
-document.addEventListener("DOMContentLoaded", () => {
-    if (document.getElementById('kzt-amount')) {
-        calculateDonation();
+    let cloudPlayers = [];
+    if (!error && data) {
+        cloudPlayers = data.map(p => ({ name: p.username, capBase: p.balance, rep: 80, icon: "🔧" }));
     }
-});
+
+    const currentNick = document.getElementById("playerUsername").textContent;
+    const entities = [
+        { name: `${currentNick} (Вы)`, capBase: state.balance + state.totalInvested, rep: state.reputation, icon: "⭐", isPlayer: true },
+        ...baseCompetitors,
+        ...cloudPlayers.filter(p => p.name !== currentNick)
+    ];
+    
+    entities.sort((a, b) => b.capBase - a.capBase);
+
+    entities.forEach((entity, index) => {
+      const card = document.createElement("div");
+      card.style.cssText = `display:flex; align-items:center; justify-content:space-between; padding:15px; margin-bottom:10px; border-radius:8px; border:1px solid var(--line); ${entity.isPlayer ? 'background: rgba(47, 109, 246, 0.15); border-color: var(--blue); font-weight: bold;' : 'background: var(--panel);'}`;
+      card.innerHTML = `
+        <div style="display:flex; align-items:center; gap:15px;">
+          <span style="font-size:18px; color:var(--muted); width:25px;">#${index + 1}</span>
+          <span style="font-size:24px;">${entity.icon}</span>
+          <div><span style="color:var(--text);">${entity.name}</span><br><span style="font-size:12px; color:var(--muted);">Репутация: ${entity.rep}%</span></div>
+        </div>
+        <strong style="color:${entity.isPlayer ? 'var(--blue)' : 'var(--text)'};">${formatMoney(Math.round(entity.capBase))}</strong>
+      `;
+      container.appendChild(card);
+    });
+}
