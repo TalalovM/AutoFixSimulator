@@ -880,4 +880,64 @@ button:disabled {
     left: 12px;
     max-width: none;
   }
+  .donation-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    max-width: 800px;
+    margin: 20px auto;
+    background: #1e293b; /* темный цвет под стиль игр */
+    padding: 20px;
+    border-radius: 10px;
+    color: #fff;
+}
+.donation-form, .donation-receipt {
+    flex: 1;
+    min-width: 280px;
+}
+.donation-form label {
+    display: block;
+    margin: 10px 0 5px;
+}
+.donation-form input, .donation-form select {
+    width: 100%;
+    padding: 10px;
+    background: #334155;
+    border: 1px solid #475569;
+    color: #fff;
+    border-radius: 5px;
+}
+.donation-receipt {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px dashed #475569;
+}
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+}
+.receipt-row.total {
+    font-weight: bold;
+    color: #38bdf8;
+}
+.receipt-row.bonus {
+    color: #4ade80;
+    font-size: 1.2em;
+}
+.btn-pay {
+    width: 100%;
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 12px;
+    margin-top: 15px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.btn-pay:hover {
+    background: #16a34a;
 }
