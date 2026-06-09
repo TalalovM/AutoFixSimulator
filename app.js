@@ -1,3 +1,45 @@
+// Инициализация Supabase с вашими ключами
+const SUPABASE_URL = "https://ycmvhvsbcexxpuzdskpu.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ztQr6Kblgt4kb-3R3nhiPg_ctswPZb6"; // Публичный ключ авторизации
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+async function signUp(email, password, username) {
+    // 1. Регистрируем пользователя в системе аутентификации
+    const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+    });
+
+    if (error) {
+        alert('Ошибка регистрации: ' + error.message);
+        return;
+    }
+
+    // 2. Если регистрация успешна, создаем запись в нашей таблице игроков
+    const user = data.user;
+    if (user) {
+        const { error: dbError } = await supabase
+            .from('profiles')
+            .insert([{ id: user.id, username: username, balance: 0 }]); // Стартовый баланс 0
+        
+        if (dbError) console.error(dbError);
+        else alert('Регистрация успешна! Проверьте почту для подтверждения (если включено).');
+    }
+}
+
+async function signIn(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+    });
+
+    if (error) {
+        alert('Ошибка входа: ' + error.message);
+    } else {
+        alert('Вы успешно вошли!');
+        // Перенаправляем в личный кабинет / обновляем интерфейс
+        showProfile(data.user);
+    }
+}
 const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const storageKey = "autoFixIndustrialSim_v5";
 
@@ -693,3 +735,8 @@ async function processDemoPayment() {
 document.addEventListener("DOMContentLoaded", () => {
     calculateDonation();
 });
+const EX_RATE = 5; 
+const COMMISSIONS = { kaspi: 0.00, card: 0.025, crypto: 0.01 };
+
+function calculateDonation() { ... }
+async function processDemoPayment() { ... }
