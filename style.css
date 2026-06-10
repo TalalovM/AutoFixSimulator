@@ -3,11 +3,6 @@
   --panel: #111a26;
   --panel-2: #151f2d;
   --panel-3: #0f1722;
-  --line: #263447;:root {
-  --bg: #0b111a;
-  --panel: #111a26;
-  --panel-2: #151f2d;
-  --panel-3: #0f1722;
   --line: #263447;
   --line-soft: rgba(255, 255, 255, 0.08);
   --text: #f4f7fb;
@@ -946,16 +941,6 @@ button:disabled {
 }
 .btn-pay:hover {
     background: #16a34a;
-}
-  --line-soft: rgba(255, 255, 255, 0.08);
-  --text: #f4f7fb;
-  --muted: #9aa7b7;
-  --blue: #2f6df6;
-  --blue-2: #1c54d6;
-  --green: #55c878;
-  --red: #e15d64;
-  --amber: #f4bb4f;
-  --shadow: 0 22px 60px rgba(0, 0, 0, 0.32);
 }
 
 * {
