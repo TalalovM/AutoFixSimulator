@@ -9,45 +9,77 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    .auth-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(11, 17, 26, 0.95);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+.auth-overlay {
+    position: fixed;
+    inset: 0;
+
+    background: rgba(0,0,0,.45);
+    backdrop-filter: blur(3px);
+
+    z-index: 9999;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.auth-card {
+    width: 420px;
+    max-width: 90%;
+
+    background: #111a26;
+    border: 1px solid #2a3a50;
+    border-radius: 16px;
+
+    padding: 30px;
+
+    box-shadow:
+        0 0 30px rgba(0,0,0,.4),
+        0 0 60px rgba(47,109,246,.15);
+
+    text-align: center;
+
+    animation: authShow .25s ease;
+}
+
+@keyframes authShow {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
     }
-    .auth-card {
-      background: #111a26;
-      border: 1px solid #263447;
-      border-radius: 12px;
-      padding: 32px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
-      text-align: center;
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
-    .auth-card h2 { margin-top: 0; margin-bottom: 12px; color: #f4f7fb; }
-    .auth-card p { color: #9aa7b7; font-size: 14px; margin-bottom: 24px; }
-    .auth-form { display: flex; flex-direction: column; gap: 16px; text-align: left; }
-    .auth-form label { color: #9aa7b7; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
-    .auth-form input {
-      background: #0b111a;
-      border: 1px solid #263447;
-      padding: 10px 14px;
-      border-radius: 6px;
-      color: #f4f7fb;
-      font-size: 15px;
-    }
-    .auth-form input:focus { border-color: #2f6df6; outline: none; }
-    .auth-toggle-btn {
-      background: none; border: none; color: #2f6df6; cursor: pointer; font-size: 14px; margin-top: 16px; text-decoration: underline;
-    }
-    .auth-card .primary-button { width: 100%; padding: 12px; margin-top: 8px; }
-    .logout-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid #263447; }
-  </style>
+}
+
+.auth-card h2 {
+    margin-bottom: 10px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.auth-form input {
+    background: #0b111a;
+    border: 1px solid #263447;
+    border-radius: 8px;
+    padding: 12px;
+    color: white;
+}
+
+.auth-toggle-btn {
+    background: none;
+    border: none;
+    color: #4f8cff;
+    cursor: pointer;
+    margin-top: 15px;
+}
+</style>
 </head>
 <body>
 
@@ -144,7 +176,7 @@
               <p>Покупайте автомобили, проводите диагностику, находите скрытые поломки и продавайте машины с умом.</p>
               <button class="primary-button" type="button" data-switch="market">К рынку автомобилей</button>
             </div>
-            <img src="assets/mercedes-w204.svg" alt="Автомобиль в мастерской">
+            <img src="assets/mercedes-w204.jpg" alt="Автомобиль в мастерской">
           </section>
 
           <section class="home-grid">
@@ -356,7 +388,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="scrim" class="scrim"></div>
-  <script src="app.js"></script>
 </body>
   </div> </div> <div class="donation-container" style="margin: 20px;">
         <div class="donation-form">
@@ -385,6 +416,6 @@
             </button>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
