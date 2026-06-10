@@ -9,10 +9,7 @@ const supabaseClient = supabase.createClient(
 );
 
 let currentUser = null;
-let isLoginMode = false;
-
-const conditionLabels = { poor: "Критическое", fair: "Удовлетворительное", good: "Стабильное" };
-const systems = { engine: "ДВС", suspension: "Ходовая часть", brakes: "Тормозная система", electric: "Электроника", body: "Кузов" };
+let isLoginMode = false;часть", brakes: "Тормозная система", electric: "Электроника", body: "Кузов" };
 
 const carTemplates = [
   { id: "audi-a4", name: "Audi A4 B6", year: 2003, basePrice: 900000, resaleMult: 1.35, image: "assets/audi-a4.jpg" },
