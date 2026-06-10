@@ -1,5 +1,15 @@
 const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const storageKey = "autoFixIndustrialSim_v5";
+const SUPABASE_URL = "https://ycmvhvsbcexxpuzdskpu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ztQr6Kblgt4kb-3R3nhiPg_ctswPZb6";
+
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let currentUser = null;
+let isLoginMode = false;
 
 const conditionLabels = { poor: "Критическое", fair: "Удовлетворительное", good: "Стабильное" };
 const systems = { engine: "ДВС", suspension: "Ходовая часть", brakes: "Тормозная система", electric: "Электроника", body: "Кузов" };
@@ -100,6 +110,7 @@ document.querySelector("#dealFilter")?.addEventListener("change", renderMarket);
 
 injectAnalyticsContainers();
 render();
+initAuth();
 
 function getRandom(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
@@ -143,6 +154,55 @@ function generateCarInstance(template) {
     hiddenRepairs: hidden,
     revealedRepairs: []
   };
+}
+async function register(email,password,username){
+
+    const { data,error } =
+        await supabaseClient.auth.signUp({
+
+            email,
+            password,
+
+            options:{
+                data:{
+                    username
+                }
+            }
+        });
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    await supabaseClient
+        .from("leaderboard")
+        .insert({
+            id:data.user.id,
+            username,
+            email
+        });
+
+    alert("Аккаунт создан");
+}
+async function login(email,password){
+
+    const { data,error } =
+        await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    currentUser = data.user;
+
+    document.getElementById("authOverlay").style.display = "none";
+
+    await loadCloudSave();
 }
 
 // --- ИЗМЕНЕНИЕ: НАЧИСЛЕНИЕ ПРОЦЕНТОВ ЗА ПОЛЬЗОВАНИЕ КРЕДИТОМ ПРИ ОБНОВЛЕНИИ РЫНКА ---
@@ -318,31 +378,60 @@ function render() {
   renderChart();
 }
 
-function renderCompetitorRating() {
-  if (!elements.ratingList) return;
-  const baseCompetitors = [
-    { name: "Astana Motors Trade", capBase: 4500000, rep: 90, icon: "🏢" },
-    { name: "Almaty Car-Recycling Corp", capBase: 2800000, rep: 60, icon: "🏭" },
-    { name: "Шокан и Партнеры (ИП)", capBase: 1200000, rep: 85, icon: "🛠️" },
-    { name: "Перекуп Сейфуллина Сити", capBase: 600000, rep: 40, icon: "🚗" }
-  ];
-  const entities = [{ name: "Ваше Предприятие (Вы)", capBase: state.balance + state.totalInvested, rep: state.reputation, icon: "⭐", isPlayer: true }, ...baseCompetitors];
-  entities.sort((a, b) => b.capBase - a.capBase);
+async function renderCompetitorRating() {
 
-  elements.ratingList.innerHTML = "";
-  entities.forEach((entity, index) => {
-    const card = document.createElement("div");
-    card.style.cssText = `display:flex; align-items:center; justify-content:space-between; padding:15px; margin-bottom:10px; border-radius:8px; border:1px solid var(--line); ${entity.isPlayer ? 'background: rgba(47, 109, 246, 0.15); border-color: var(--blue); font-weight: bold;' : 'background: var(--panel);'}`;
-    card.innerHTML = `
-      <div style="display:flex; align-items:center; gap:15px;">
-        <span style="font-size:18px; color:var(--muted); width:25px;">#${index + 1}</span>
-        <span style="font-size:24px;">${entity.icon}</span>
-        <div><span style="color:var(--text);">${entity.name}</span><br><span style="font-size:12px; color:var(--muted);">Репутация: ${entity.rep}%</span></div>
-      </div>
-      <strong style="color:${entity.isPlayer ? 'var(--blue)' : 'var(--text)'};">${formatMoney(Math.round(entity.capBase))}</strong>
-    `;
-    elements.ratingList.appendChild(card);
-  });
+    if (!elements.ratingList) return;
+
+    const { data } = await supabaseClient
+        .from("leaderboard")
+        .select("*")
+        .order("profit_total", {
+            ascending: false
+        })
+        .limit(100);
+
+    elements.ratingList.innerHTML = "";
+
+    data.forEach((player, index) => {
+
+        const isMe =
+            currentUser &&
+            player.id === currentUser.id;
+
+        const card = document.createElement("div");
+
+        card.style.cssText = `
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:15px;
+            margin-bottom:10px;
+            border-radius:8px;
+            border:1px solid var(--line);
+            ${isMe ? "background:rgba(47,109,246,.15);" : ""}
+        `;
+
+        card.innerHTML = `
+            <div>
+                <strong>
+                    #${index + 1}
+                    ${player.username}
+                    ${isMe ? "(Вы)" : ""}
+                </strong>
+                <br>
+                <span>
+                    Репутация:
+                    ${player.reputation}%
+                </span>
+            </div>
+
+            <strong>
+                ${formatMoney(player.profit_total)}
+            </strong>
+        `;
+
+        elements.ratingList.appendChild(card);
+    });
 }
 
 // --- ИЗМЕНЕНИЕ: ОБНОВЛЕННЫЙ ИНТЕРФЕЙС ПАНЕЛИ С ДВУМЯ КНОПКАМИ ВЫПЛАТ ---
@@ -591,11 +680,79 @@ function renderGarageCollection(container, mode) {
   });
 }
 
-function commit(msg) { saveState(); render(); showToast(msg); }
-function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
+async function commit(msg) {
+    saveState();
+    await saveCloudState();
+
+    render();
+    showToast(msg);
+}
+function saveState() { 
+  localStorage.setItem(storageKey, JSON.stringify(state)); 
+}
+async function saveCloudState() {
+
+    if (!currentUser) return;
+
+    await supabaseClient
+        .from("leaderboard")
+        .upsert({
+            id: currentUser.id,
+            username: currentUser.user_metadata.username,
+            email: currentUser.email,
+
+            balance: state.balance,
+            xp: state.xp,
+            reputation: state.reputation,
+
+            sold_count: state.soldCount,
+            profit_total: state.profitTotal,
+
+            updated_at: new Date()
+        });
+}
+async function loadCloudSave() {
+
+    const { data } = await supabaseClient
+        .from("leaderboard")
+        .select("*")
+        .eq("id", currentUser.id)
+        .single();
+
+    if (!data) return;
+
+    state.balance = data.balance;
+    state.xp = data.xp;
+    state.reputation = data.reputation;
+    state.soldCount = data.sold_count;
+    state.profitTotal = data.profit_total;
+
+    render();
+}
 function loadState() {
   const saved = localStorage.getItem(storageKey);
   return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(initialState));
+}
+async function initAuth() {
+
+    const { data } =
+        await supabaseClient
+            .auth
+            .getSession();
+
+    if (data.session) {
+
+        currentUser =
+            data.session.user;
+
+        authOverlay.style.display =
+            "none";
+
+    } else {
+
+        authOverlay.style.display =
+            "flex";
+    }
 }
 function formatMoney(v) { return `${money.format(v)} ₸`; }
 function addEvent(type, title, text) {
@@ -628,3 +785,126 @@ function resetGame() {
     refreshMarket();
   }
 }
+const authOverlay = document.getElementById("authOverlay");
+const authForm = document.getElementById("authForm");
+const authTitle = document.getElementById("authTitle");
+const authDesc = document.getElementById("authDesc");
+const authToggleType = document.getElementById("authToggleType");
+const authUsername = document.getElementById("authUsername");
+const usernameLabel = document.getElementById("usernameLabel");
+const authSubmitBtn = document.getElementById("authSubmitBtn");
+
+authToggleType.addEventListener("click", () => {
+
+    isLoginMode = !isLoginMode;
+
+    if (isLoginMode) {
+
+        authTitle.textContent = "Вход";
+        authDesc.textContent = "Войдите в аккаунт";
+
+        authSubmitBtn.textContent = "Войти";
+
+        usernameLabel.style.display = "none";
+
+        authToggleType.textContent =
+            "Нет аккаунта? Зарегистрироваться";
+
+    } else {
+
+        authTitle.textContent =
+            "Регистрация мастера";
+
+        authDesc.textContent =
+            "Создайте аккаунт";
+
+        authSubmitBtn.textContent =
+            "Зарегистрироваться";
+
+        usernameLabel.style.display = "block";
+
+        authToggleType.textContent =
+            "Уже есть аккаунт? Войти";
+    }
+});
+authForm.addEventListener("submit", async (e) => {
+
+    e.preventDefault();
+
+    const email =
+        document.getElementById("authEmail").value;
+
+    const password =
+        document.getElementById("authPassword").value;
+
+    const username =
+        document.getElementById("authUsername").value;
+
+    if (!isLoginMode) {
+
+        const { data, error } =
+            await supabaseClient.auth.signUp({
+
+                email,
+                password,
+
+                options: {
+                    data: {
+                        username
+                    }
+                }
+            });
+
+        if (error) {
+            alert(error.message);
+            return;
+        }
+
+        await supabaseClient
+            .from("leaderboard")
+            .insert({
+                id: data.user.id,
+                username,
+                email
+            });
+
+        currentUser = data.user;
+
+        authOverlay.style.display = "none";
+
+        alert("Регистрация успешна");
+
+    } else {
+
+        const { data, error } =
+            await supabaseClient
+                .auth
+                .signInWithPassword({
+                    email,
+                    password
+                });
+
+        if (error) {
+            alert(error.message);
+            return;
+        }
+
+        currentUser = data.user;
+
+        authOverlay.style.display = "none";
+
+        alert("Добро пожаловать!");
+    }
+});
+async function initAuth() {
+    const { data } = await supabaseClient.auth.getSession();
+
+    if (data.session) {
+        currentUser = data.session.user;
+        await loadCloudSave();
+    } else {
+        document.getElementById("authOverlay").style.display = "flex";
+    }
+}
+
+initAuth();
