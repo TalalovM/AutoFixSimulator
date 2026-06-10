@@ -1,390 +1,944 @@
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AutoFix - симулятор ремонта автомобилей</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+:root {
+  --bg: #0b111a;
+  --panel: #111a26;
+  --panel-2: #151f2d;
+  --panel-3: #0f1722;
+  --line: #263447;
+  --line-soft: rgba(255, 255, 255, 0.08);
+  --text: #f4f7fb;
+  --muted: #9aa7b7;
+  --blue: #2f6df6;
+  --blue-2: #1c54d6;
+  --green: #55c878;
+  --red: #e15d64;
+  --amber: #f4bb4f;
+  --shadow: 0 22px 60px rgba(0, 0, 0, 0.32);
+}
 
-  <style>
-    .auth-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(11, 17, 26, 0.95);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .auth-card {
-      background: #111a26;
-      border: 1px solid #263447;
-      border-radius: 12px;
-      padding: 32px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
-      text-align: center;
-    }
-    .auth-card h2 { margin-top: 0; margin-bottom: 12px; color: #f4f7fb; }
-    .auth-card p { color: #9aa7b7; font-size: 14px; margin-bottom: 24px; }
-    .auth-form { display: flex; flex-direction: column; gap: 16px; text-align: left; }
-    .auth-form label { color: #9aa7b7; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
-    .auth-form input {
-      background: #0b111a;
-      border: 1px solid #263447;
-      padding: 10px 14px;
-      border-radius: 6px;
-      color: #f4f7fb;
-      font-size: 15px;
-    }
-    .auth-form input:focus { border-color: #2f6df6; outline: none; }
-    .auth-toggle-btn {
-      background: none; border: none; color: #2f6df6; cursor: pointer; font-size: 14px; margin-top: 16px; text-decoration: underline;
-    }
-    .auth-card .primary-button { width: 100%; padding: 12px; margin-top: 8px; }
-    .logout-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid #263447; }
-  </style>
-</head>
-<body>
+* {
+  box-sizing: border-box;
+}
 
-  <div id="authOverlay" class="auth-overlay" style="display: none;">
-    <div class="auth-card">
-      <h2 id="authTitle">Регистрация мастера</h2>
-      <p id="authDesc">Создайте аккаунт, чтобы попасть в облачный рейтинг механиков.</p>
+html,
+body {
+  overflow-x: hidden;
+}
 
-      <form id="authForm" class="auth-form">
-        <label id="usernameLabel">
-          Имя в рейтинге (Никнейм)
-          <input id="authUsername" type="text" placeholder="Например, СТО_Красавчик" required>
-        </label>
-        <label>
-          Электронная почта
-          <input id="authEmail" type="email" placeholder="example@mail.com" required>
-        </label>
-        <label>
-          Пароль
-          <input id="authPassword" type="password" placeholder="Минимум 6 символов" required>
-        </label>
-        <button class="primary-button" type="submit" id="authSubmitBtn">Зарегистрироваться</button>
-      </form>
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 20% 0, rgba(47, 109, 246, 0.18), transparent 34%),
+    radial-gradient(circle at 90% 12%, rgba(85, 200, 120, 0.1), transparent 30%),
+    var(--bg);
+  font-family: "Segoe UI", Arial, sans-serif;
+}
 
-      <button id="authToggleType" class="auth-toggle-btn" type="button">Уже есть аккаунт? Войти</button>
-    </div>
-  </div>
+button,
+input,
+select {
+  font: inherit;
+}
 
-  <div class="app-layout">
-    <aside class="sidebar" aria-label="Главное меню">
-      <div class="logo">
-        <span class="logo-mark">AF</span>
-        <strong>AutoFix</strong>
-      </div>
-      <nav class="side-nav">
-        <button class="nav-button is-active" type="button" data-view="home"><span>Г</span>Главная</button>
-        <button class="nav-button" type="button" data-view="market"><span>Р</span>Рынок автомобилей</button>
-        <button class="nav-button" type="button" data-view="garage"><span>М</span>Мой гараж</button>
-        <button class="nav-button" type="button" data-view="repair"><span>К</span>Ремонт</button>
-        <button class="nav-button" type="button" data-view="sale"><span>П</span>Продажа авто</button>
-        <button class="nav-button" type="button" data-view="events"><span>С</span>События</button>
-        <button class="nav-button" type="button" data-view="rating"><span>Т</span>Рейтинг</button>
-        <button class="nav-button" type="button" data-view="settings"><span>Н</span>Настройки</button>
-      </nav>
-    </aside>
+button {
+  cursor: pointer;
+}
 
-    <div class="content-shell">
-      <header class="topbar">
-        <button id="menuButton" class="menu-button" type="button" aria-label="Открыть меню">Меню</button>
-        <section class="stats-strip" aria-label="Показатели игрока">
-          <article class="top-stat">
-            <span class="stat-icon">₸</span>
-            <div>
-              <span>Баланс</span>
-              <strong id="balanceText">0 ₸</strong>
-            </div>
-          </article>
-          <article class="top-stat">
-            <span class="stat-icon">XP</span>
-            <div>
-              <span>Опыт</span>
-              <strong id="xpText">0 / 1000</strong>
-            </div>
-          </article>
-          <article class="top-stat">
-            <span class="stat-icon">%</span>
-            <div>
-              <span>Репутация</span>
-              <strong id="reputationText">0%</strong>
-            </div>
-          </article>
-          <article class="top-stat">
-            <span class="stat-icon">A</span>
-            <div>
-              <span>Продано машин</span>
-              <strong id="soldText">0</strong>
-            </div>
-          </article>
-        </section>
-        <div class="profile-card">
-          <span class="avatar" id="avatarLetter">M</span>
-          <div>
-            <strong id="profileName">Загрузка...</strong>
-            <span id="levelText">Уровень 1</span>
-          </div>
-        </div>
-      </header>
+/* ИЗМЕНЕНИЕ: добавлен align-items: start для корректной работы sticky */
+.app-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: 100vh;
+  align-items: start; 
+}
 
-      <main>
-        <section id="homeView" class="view is-visible">
-          <section class="hero-panel">
-            <div class="hero-copy">
-              <h1>Добро пожаловать в AutoFix</h1>
-              <p>Покупайте автомобили, проводите диагностику, находите скрытые поломки и продавайте машины с умом.</p>
-              <button class="primary-button" type="button" data-switch="market">К рынку автомобилей</button>
-            </div>
-            <img src="assets/camry.svg" alt="Автомобиль в мастерской">
-          </section>
+/* ИЗМЕНЕНИЕ: добавлен overflow-y для независимого скролла меню */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 20px 14px;
+  background: rgba(12, 18, 27, 0.96);
+  border-right: 1px solid var(--line);
+  overflow-y: auto; 
+}
 
-          <section class="home-grid">
-            <article class="panel panel-wide">
-              <div class="panel-heading">
-                <h2>Рынок автомобилей</h2>
-                <button class="link-button" type="button" data-switch="market">Смотреть все</button>
-              </div>
-              <div id="homeMarketList" class="compact-cards"></div>
-            </article>
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px 22px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 27px;
+  font-weight: 900;
+}
 
-            <article class="panel">
-              <div class="panel-heading">
-                <h2>Мой гараж</h2>
-                <button class="link-button" type="button" data-switch="garage">Смотреть все</button>
-              </div>
-              <div id="homeGarageList"></div>
-            </article>
+.logo-mark,
+.stat-icon,
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
 
-            <article class="panel panel-wide">
-              <div class="panel-heading">
-                <h2>События</h2>
-                <button class="link-button" type="button" data-switch="events">Смотреть все</button>
-              </div>
-              <div id="homeEventsList" class="event-list"></div>
-            </article>
+.logo-mark {
+  width: 38px;
+  height: 38px;
+  color: #dfe8ff;
+  background: #202b3d;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 13px;
+}
 
-            <article class="panel">
-              <div class="panel-heading">
-                <h2>Топ механиков</h2>
-                <button class="link-button" type="button" data-switch="rating">Смотреть все</button>
-              </div>
-              <div id="homeRatingList" class="rating-list"></div>
-            </article>
-          </section>
-        </section>
+.side-nav {
+  display: grid;
+  gap: 6px;
+  padding-top: 18px;
+}
 
-        <section id="marketView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Сделки без повторов</p>
-              <h1>Рынок автомобилей</h1>
-            </div>
-            <button id="newDealsButton" class="secondary-button" type="button">Обновить порядок</button>
-          </div>
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 12px;
+  color: #d7deea;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  text-align: left;
+}
 
-          <section class="filters" aria-label="Фильтры рынка">
-            <label>
-              Поиск
-              <input id="searchInput" type="search" placeholder="Марка или модель">
-            </label>
-            <label>
-              Состояние
-              <select id="conditionFilter">
-                <option value="all">Любое</option>
-                <option value="poor">Плохое</option>
-                <option value="fair">Среднее</option>
-                <option value="good">Хорошее</option>
-              </select>
-            </label>
-            <label>
-              Прогноз
-              <select id="dealFilter">
-                <option value="all">Все сделки</option>
-                <option value="positive">Возможный плюс</option>
-                <option value="danger">Риск минуса</option>
-              </select>
-            </label>
-          </section>
+.nav-button span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  color: #aab7ca;
+  font-size: 12px;
+  font-weight: 900;
+}
 
-          <div id="marketList" class="car-grid"></div>
-        </section>
+.nav-button:hover,
+.nav-button.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--blue-2));
+}
 
-        <section id="garageView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Ваши автомобили</p>
-              <h1>Мой гараж</h1>
-            </div>
-          </div>
-          <div id="garageList" class="garage-grid"></div>
-        </section>
+.nav-button.is-active span,
+.nav-button:hover span {
+  color: #fff;
+}
 
-        <section id="repairView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Диагностика и ремонт</p>
-              <h1>Ремонт</h1>
-            </div>
-          </div>
-          <div id="repairList" class="garage-grid"></div>
-        </section>
+.content-shell {
+  min-width: 0;
+  overflow-x: hidden;
+}
 
-        <section id="saleView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Финальный расчёт</p>
-              <h1>Продажа авто</h1>
-            </div>
-          </div>
-          <div id="saleList" class="garage-grid"></div>
-        </section>
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 78px;
+  padding: 12px 22px;
+  background: rgba(13, 20, 30, 0.92);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+}
 
-        <section id="eventsView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Журнал мастерской</p>
-              <h1>События</h1>
-            </div>
-          </div>
-          <div id="eventsList" class="event-list"></div>
-        </section>
+.menu-button {
+  display: none;
+  min-height: 42px;
+  padding: 0 14px;
+  color: #fff;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
 
-        <section id="ratingView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Сравнение игроков</p>
-              <h1>Рейтинг</h1>
-            </div>
-          </div>
-          <div class="panel">
-            <div id="ratingList" class="rating-list"></div>
-          </div>
-        </section>
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 12px;
+}
 
-        <section id="settingsView" class="view">
-          <div class="page-heading">
-            <div>
-              <p class="section-kicker">Управление прогрессом</p>
-              <h1>Настройки</h1>
-            </div>
-          </div>
-          <article class="panel settings-panel">
-            <h2>Новая игра</h2>
-            <p>Очистит купленные автомобили, гараж, события и финансовую историю.</p>
-            <button id="resetButton" class="danger-button" type="button">Начать заново</button>
+.top-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
 
-            <div class="logout-section">
-              <h2>Аккаунт</h2>
-              <p>Вы можете выйти из текущего профиля механика.</p>
-              <button id="logoutButton" class="secondary-button" type="button">Выйти из аккаунта</button>
-            </div>
-          </article>
-        </section>
-      </main>
-    </div>
-  </div>
+.stat-icon {
+  width: 38px;
+  height: 38px;
+  color: #d6e1ff;
+  background: #182335;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 900;
+}
 
-  <template id="marketCardTemplate">
-    <article class="market-card">
-      <img class="car-image" src="" alt="">
-      <div class="card-body">
-        <div class="card-title">
-          <h2></h2>
-          <span class="condition-badge"></span>
-        </div>
-        <p class="car-meta"></p>
-        <div class="price-line">
-          <span>Цена</span>
-          <strong class="price-text"></strong>
-        </div>
-        <div class="mini-stats">
-          <div><span>Видимый ремонт</span><strong class="visible-cost"></strong></div>
-          <div><span>Прогноз</span><strong class="forecast-text"></strong></div>
-        </div>
-        <p class="risk-text"></p>
-        <button class="primary-button buy-button" type="button">Купить</button>
-      </div>
-    </article>
-  </template>
+.top-stat span,
+.mini-stats span,
+.condition-total span,
+.system-row span,
+.section-kicker,
+.event-time,
+.rating-row span,
+.settings-panel p {
+  color: var(--muted);
+}
 
-  <template id="garageCardTemplate">
-    <article class="garage-card">
-      <div class="garage-top">
-        <img class="garage-image" src="" alt="">
-        <div>
-          <div class="card-title">
-            <h2></h2>
-            <span class="profit-badge"></span>
-          </div>
-          <p class="garage-meta"></p>
-        </div>
-      </div>
+.top-stat strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 16px;
+}
 
-      <div class="condition-box">
-        <div class="condition-total">
-          <span>Состояние автомобиля</span>
-          <strong class="health-text"></strong>
-        </div>
-        <div class="system-bars"></div>
-      </div>
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
 
-      <div class="mini-stats garage-money">
-        <div><span>Куплен</span><strong class="purchase-text"></strong></div>
-        <div><span>Ремонт</span><strong class="repair-text"></strong></div>
-        <div><span>Оценка</span><strong class="value-text"></strong></div>
-        <div><span>Итог</span><strong class="result-text"></strong></div>
-      </div>
+.avatar {
+  width: 44px;
+  height: 44px;
+  color: #fff;
+  background: linear-gradient(145deg, #37465d, #1b2534);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-weight: 900;
+}
 
-      <div class="diagnostic-note"></div>
-      <div class="repair-items"></div>
+.profile-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
 
-      <div class="garage-actions">
-        <button class="secondary-button diagnose-button" type="button">Диагностика</button>
-        <button class="primary-button sell-button" type="button">Продать</button>
-      </div>
-    </article>
-  </template>
+main {
+  padding: 22px;
+}
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <div id="scrim" class="scrim"></div>
-  <script src="app.js"></script>
-</body>
-  </div> </div> <div class="donation-container" style="margin: 20px;">
-        <div class="donation-form">
-            <h3>Пополнение игрового баланса</h3>
-            <label for="kzt-amount">Сумма пополнения (KZT):</label>
-            <input type="number" id="kzt-amount" value="2000" min="500" oninput="calculateDonation()">
-            
-            <label for="payment-method">Способ оплаты:</label>
-            <select id="payment-method" onchange="calculateDonation()">
-                <option value="kaspi">Kaspi.kz (Комиссия: 0%)</option>
-                <option value="card">Банковская карта Visa/MC (Комиссия: 2.5%)</option>
-                <option value="crypto">Криптовалюта USDT (Комиссия: 1%)</option>
-            </select>
-        </div>
+.view {
+  display: none;
+}
 
-        <div class="donation-receipt">
-            <h4>Детали платежа</h4>
-            <div class="receipt-row"><span>Стоимость:</span><span id="res-base">0 KZT</span></div>
-            <div class="receipt-row"><span>Комиссия системы:</span><span id="res-comm">0 KZT</span></div>
-            <hr style="border-color: #263447;">
-            <div class="receipt-row total"><span>Итого к оплате:</span><span id="res-total">0 KZT</span></div>
-            <div class="receipt-row bonus"><span>Будет зачислено:</span><strong id="res-game-money">$0</strong></div>
-            
-            <button onclick="processDemoPayment()" class="primary-button" type="button" style="width: 100%; margin-top: 15px;">
-                Оплатить (Демо-режим)
-            </button>
-        </div>
-    </div>
-    <script src="script.js"></script>
-</body>
-</html>
+.view.is-visible {
+  display: block;
+}
+
+.hero-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 430px;
+  gap: 24px;
+  align-items: center;
+  overflow: hidden;
+  min-height: 220px;
+  margin-bottom: 18px;
+  padding: 30px;
+  background:
+    linear-gradient(90deg, rgba(9, 14, 22, 0.98), rgba(9, 14, 22, 0.72)),
+    linear-gradient(135deg, rgba(47, 109, 246, 0.24), rgba(85, 200, 120, 0.1));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-panel h1,
+.page-heading h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.12;
+}
+
+.hero-panel p {
+  max-width: 560px;
+  margin: 12px 0 22px;
+  color: #d7dfec;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.hero-panel img {
+  width: 100%;
+  max-height: 210px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.35));
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(330px, 0.7fr);
+  gap: 18px;
+}
+
+.panel,
+.market-card,
+.garage-card,
+.empty-state {
+  background: rgba(17, 26, 38, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.18);
+}
+
+.panel {
+  padding: 14px;
+}
+
+.panel-wide {
+  min-width: 0;
+}
+
+.panel-heading,
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.panel-heading {
+  margin-bottom: 14px;
+}
+
+.panel h2,
+.panel-heading h2,
+.market-card h2,
+.garage-card h2,
+.settings-panel h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.page-heading {
+  margin-bottom: 16px;
+}
+
+.section-kicker {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.compact-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.car-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.garage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.market-card {
+  overflow: hidden;
+}
+
+.market-card:hover,
+.garage-card:hover {
+  border-color: rgba(47, 109, 246, 0.7);
+}
+
+.car-image {
+  display: block;
+  width: 100%;
+  height: 152px;
+  object-fit: cover;
+  background: #1a2534;
+}
+
+.card-body,
+.garage-card {
+  padding: 14px;
+}
+
+.card-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.car-meta,
+.risk-text,
+.garage-meta,
+.diagnostic-note {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.car-meta {
+  margin: 6px 0 12px;
+}
+
+.risk-text {
+  min-height: 40px;
+  margin: 12px 0;
+}
+
+.condition-badge,
+.profit-badge,
+.event-type {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.condition-poor,
+.profit-negative,
+.event-danger {
+  color: #ffd6d9;
+  background: rgba(225, 93, 100, 0.22);
+}
+
+.condition-fair,
+.profit-neutral,
+.event-warning {
+  color: #ffe2a3;
+  background: rgba(244, 187, 79, 0.2);
+}
+
+.condition-good,
+.profit-positive,
+.event-good {
+  color: #c9f6d6;
+  background: rgba(85, 200, 120, 0.2);
+}
+
+.price-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.price-line span {
+  color: var(--muted);
+}
+
+.price-line strong {
+  font-size: 20px;
+}
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mini-stats div {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+}
+
+.mini-stats strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 190px 190px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  background: rgba(17, 26, 38, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 6px;
+  padding: 9px 10px;
+  color: var(--text);
+  background: #0c1420;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--blue);
+  outline: 3px solid rgba(47, 109, 246, 0.18);
+}
+
+.primary-button,
+.secondary-button,
+.danger-button,
+.link-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 900;
+}
+
+.primary-button {
+  width: 100%;
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--blue-2));
+}
+
+.secondary-button {
+  color: #fff;
+  background: #162235;
+  border-color: var(--line);
+}
+
+.danger-button {
+  color: #fff;
+  background: #b93b44;
+}
+
+.link-button {
+  min-height: auto;
+  padding: 0;
+  color: #8fb0ff;
+  background: transparent;
+}
+
+.garage-top {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.garage-image {
+  width: 160px;
+  height: 104px;
+  object-fit: cover;
+  background: #1a2534;
+  border-radius: 8px;
+}
+
+.garage-meta {
+  margin: 7px 0 0;
+}
+
+.condition-box {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+}
+
+.condition-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.system-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.system-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.bar-track {
+  height: 7px;
+  overflow: hidden;
+  background: #202b3d;
+  border-radius: 999px;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--red);
+  border-radius: inherit;
+}
+
+.bar-fill.medium {
+  background: var(--amber);
+}
+
+.bar-fill.good {
+  background: var(--green);
+}
+
+.garage-money {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.diagnostic-note {
+  margin: 12px 0;
+  padding: 10px;
+  background: rgba(47, 109, 246, 0.08);
+  border: 1px solid rgba(47, 109, 246, 0.22);
+  border-radius: 9px;
+}
+
+.repair-items {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.repair-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+}
+
+.repair-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.repair-row button {
+  min-height: 34px;
+}
+
+.hidden-problem {
+  border-color: rgba(225, 93, 100, 0.46);
+}
+
+.garage-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.event-list {
+  display: grid;
+  gap: 10px;
+}
+
+.event-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+}
+
+.event-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.rating-list {
+  display: grid;
+}
+
+.rating-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 90px 130px;
+  gap: 12px;
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.rating-row:last-child {
+  border-bottom: 0;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  padding: 18px;
+}
+
+.settings-panel {
+  max-width: 560px;
+}
+
+.settings-panel p {
+  line-height: 1.5;
+}
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 20;
+  max-width: 360px;
+  padding: 13px 15px;
+  color: #fff;
+  background: #101827;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scrim {
+  display: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+@media (max-width: 1160px) {
+  .app-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .stats-strip {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
+
+  .hero-panel,
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-cards,
+  .car-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .garage-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-layout {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    width: min(82vw, 290px);
+    transform: translateX(-125%);
+    transition: transform 180ms ease;
+  }
+
+  body.menu-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  body.menu-open .scrim {
+    display: block;
+  }
+
+  .topbar {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .menu-button {
+    display: block;
+    width: fit-content;
+  }
+
+  .stats-strip,
+  .compact-cards,
+  .car-grid,
+  .garage-grid,
+  .filters,
+  .mini-stats,
+  .garage-money {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-card {
+    display: none;
+  }
+
+  main {
+    padding: 12px;
+  }
+
+  .hero-panel {
+    min-height: auto;
+    padding: 20px;
+  }
+
+  .hero-panel h1,
+  .page-heading h1 {
+    font-size: 27px;
+  }
+
+  .hero-panel img {
+    max-height: 160px;
+  }
+
+  .panel-heading,
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .garage-top {
+    grid-template-columns: 1fr;
+  }
+
+  .garage-image {
+    width: 100%;
+    height: 170px;
+  }
+
+  .system-row {
+    grid-template-columns: 96px minmax(0, 1fr) 38px;
+  }
+
+  .repair-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .repair-row button {
+    grid-column: 1 / -1;
+  }
+
+  .garage-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .event-item,
+  .rating-row {
+    grid-template-columns: 1fr;
+  }
+
+  .toast {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-width: none;
+  }
+}
+  .donation-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    max-width: 800px;
+    margin: 20px auto;
+    background: #1e293b; /* темный цвет под стиль игр */
+    padding: 20px;
+    border-radius: 10px;
+    color: #fff;
+}
+.donation-form, .donation-receipt {
+    flex: 1;
+    min-width: 280px;
+}
+.donation-form label {
+    display: block;
+    margin: 10px 0 5px;
+}
+.donation-form input, .donation-form select {
+    width: 100%;
+    padding: 10px;
+    background: #334155;
+    border: 1px solid #475569;
+    color: #fff;
+    border-radius: 5px;
+}
+.donation-receipt {
+    background: #0f172a;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px dashed #475569;
+}
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+}
+.receipt-row.total {
+    font-weight: bold;
+    color: #38bdf8;
+}
+.receipt-row.bonus {
+    color: #4ade80;
+    font-size: 1.2em;
+}
+.btn-pay {
+    width: 100%;
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 12px;
+    margin-top: 15px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.btn-pay:hover {
+    background: #16a34a;
+}
