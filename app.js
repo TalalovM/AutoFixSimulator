@@ -739,3 +739,81 @@ async function initAuth() {
     }
 }
 initAuth();
+async function processDemoPayment() {
+    const amount = Number( document.getElementById("kzt-amount").value );
+    const method = document.getElementById("payment-method").value;
+    const gameMoney = amount * 100;
+    state.balance += gameMoney;
+    await saveCloudState();
+    const receiptId = crypto.randomUUID();
+    await supabaseClient
+        .from("payments")
+        .insert({
+            id: receiptId,
+            user_id: currentUser.id,
+            username:
+                currentUser.user_metadata.username,
+            amount_kzt: amount,
+            game_money: gameMoney,
+            payment_method: method
+        });
+    showReceipt({ receiptId, amount, gameMoney, method });
+    commit( `Баланс пополнен на ${formatMoney(gameMoney)}` );
+}
+
+function showReceipt(data) {
+    document
+        .getElementById("receiptModal")
+        .style.display = "block";
+    document
+        .getElementById("receiptContent")
+        .innerHTML = `
+<h2>AUTOFIX</h2>
+<p> Чек № ${data.receiptId.slice(0,8)} </p>
+<p> Дата: ${new Date().toLocaleString()} </p>
+<hr> <p> Пополнение: ${data.amount} ₸ </p>
+<p> Зачислено: ${formatMoney(data.gameMoney)} </p>
+<p> Оплата: ${data.method} </p>
+<hr> <strong> Оплата успешно выполнена </strong> `;
+}
+
+function closeReceipt() {
+    document
+        .getElementById("receiptModal")
+        .style.display = "none";
+}
+function calculateDonation() {
+    const amount =
+        Number(document.getElementById("kzt-amount").value) || 0;
+    const method = document.getElementById("payment-method").value;
+    let commissionRate = 0;
+    switch(method){ case "card": commissionRate = 0.025;
+            break; case "crypto": commissionRate = 0.01;
+            break; case "kaspi": default: commissionRate = 0;
+    }
+    const commission = Math.round(amount * commissionRate);
+    const total = amount + commission;
+    const gameMoney = amount * 100;
+    document.getElementById("res-base")
+        .textContent = amount.toLocaleString() + " KZT";
+    document.getElementById("res-comm")
+        .textContent = commission.toLocaleString() + " KZT";
+    document.getElementById("res-total")
+        .textContent = total.toLocaleString() + " KZT";
+    document.getElementById("res-game-money")
+        .textContent = formatMoney(gameMoney);
+}
+function downloadReceiptPdf(receipt) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text( "AUTOFIX PAYMENT RECEIPT", 20, 20 );
+    doc.setFontSize(12);
+    doc.text( `Receipt ID: ${receipt.id}`, 20, 40 );
+    doc.text( `Date: ${new Date().toLocaleString()}`, 20, 50 );
+    doc.text( `Amount: ${receipt.amount} KZT`, 20, 60 );
+    doc.text( `Game money: ${receipt.gameMoney}`, 20, 70 );
+    doc.text( `Method: ${receipt.method}`, 20, 80 );
+    doc.text( `Status: SUCCESS`, 20, 90 );
+    doc.save( `receipt-${receipt.id}.pdf` );
+}
