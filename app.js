@@ -101,6 +101,7 @@ document.querySelectorAll("[data-view], [data-switch]").forEach(btn => {
 });
 document.querySelector("#newDealsButton").addEventListener("click", refreshMarket);
 document.querySelector("#resetButton").addEventListener("click", resetGame);
+
 elements.menuButton.addEventListener("click", () => document.body.classList.add("menu-open"));
 elements.scrim.addEventListener("click", () => document.body.classList.remove("menu-open"));
 
@@ -113,35 +114,20 @@ render();
 initAuth();
 
 function getRandom(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-
 function generateCarInstance(template) {
   const seed = Math.random();
   const condition = seed > 0.75 ? "good" : seed > 0.35 ? "fair" : "poor";
   const mileage = getRandom(90000, 380000);
   const priceModifier = 0.85 + Math.random() * 0.3;
-
   const healthFloor = condition === "good" ? 75 : condition === "fair" ? 45 : 20;
-  const health = {};
-  Object.keys(systems).forEach(s => health[s] = getRandom(healthFloor, Math.min(healthFloor + 25, 100)));
-
+  const health = {}; Object.keys(systems).forEach(s => health[s] = getRandom(healthFloor, Math.min(healthFloor + 25, 100)));
   const allRepairs = [...possibleRepairs].sort(() => 0.5 - Math.random());
-
-  const mapRepair = r => ({
-    ...r,
-    id: Math.random().toString(36).substr(2, 9),
-    cost: Math.round(getRandom(r.costRange[0], r.costRange[1]) * state.currentEvent.repairMod)
-  });
-
+  const mapRepair = r => ({ ...r, id: Math.random().toString(36).substr(2, 9), cost: Math.round(getRandom(r.costRange[0], r.costRange[1]) * state.currentEvent.repairMod) });
   const visible = allRepairs.slice(0, getRandom(1, 2)).map(mapRepair);
   const hidden = Math.random() < 0.15 ? [] : allRepairs.slice(2, 2 + getRandom(1, 2)).map(mapRepair);
 
-  if (state.upgrades.scanner) {
-    visible.push(...hidden);
-    hidden.length = 0;
-  }
-
+  if (state.upgrades.scanner) { visible.push(...hidden); hidden.length = 0; }
   const price = Math.round(template.basePrice * priceModifier);
-
   return {
     ...template,
     instanceId: Math.random().toString(36).substr(2, 9),
@@ -155,53 +141,25 @@ function generateCarInstance(template) {
     revealedRepairs: []
   };
 }
+
 async function register(email,password,username){
-
     const { data,error } =
-        await supabaseClient.auth.signUp({
-
-            email,
-            password,
-
-            options:{
-                data:{
-                    username
-                }
-            }
-        });
-
-    if(error){
-        alert(error.message);
-        return;
-    }
-
+        await supabaseClient.auth.signUp({ email, password, options:{ data:{ username } } });
+    if(error){ alert(error.message); return; }
     await supabaseClient
         .from("leaderboard")
-        .insert({
-            id:data.user.id,
-            username,
-            email
-        });
-
+        .insert({ id:data.user.id, username, email });
     alert("Аккаунт создан");
 }
 async function login(email,password){
-
     const { data,error } =
-        await supabaseClient.auth.signInWithPassword({
-            email,
-            password
-        });
-
+        await supabaseClient.auth.signInWithPassword({ email, password });
     if(error){
         alert(error.message);
         return;
     }
-
     currentUser = data.user;
-
     document.getElementById("authOverlay").style.display = "none";
-
     await loadCloudSave();
 }
 
@@ -209,8 +167,7 @@ async function login(email,password){
 function refreshMarket() {
   if (state.loan.active) {
     const interestCharge = Math.round(state.loan.principal * 0.02); // 2% от начальной суммы займа за каждый шаг
-    if (state.balance >= interestCharge) {
-      state.balance -= interestCharge;
+    if (state.balance >= interestCharge) { state.balance -= interestCharge;
       addEvent("danger", "Проценты по кредиту", `Списана комиссия за обслуживание кредита: -${formatMoney(interestCharge)}`);
     } else {
       // Имитация роста долга при отсутствии ликвидности
@@ -317,13 +274,11 @@ function sellCar(instanceId) {
   if (state.upgrades.marketing) finalResale *= 1.08;
   finalResale = Math.round(finalResale);
   const netProfit = finalResale - car.purchasePrice - car.repairCost;
-
   state.balance += finalResale;
   state.profitTotal += netProfit;
   state.soldCount++;
   state.xp += netProfit > 0 ? 200 : 75;
   state.reputation = Math.max(10, Math.min(100, state.reputation + (netProfit > 0 ? 6 : -12)));
-
   state.financialHistory.push({ period: "Сделка №" + state.soldCount, profit: netProfit, balance: state.balance });
   state.garage.splice(index, 1);
   addEvent(netProfit > 0 ? "good" : "danger", "Ликвидация актива", `${car.name} реализован за ${formatMoney(finalResale)}. Маржа: ${formatMoney(netProfit)}`);
@@ -332,13 +287,11 @@ function sellCar(instanceId) {
 
 function calculateHealth(car) {
   let totalHealth = 0;
-  const sysKeys = Object.keys(systems);
-  sysKeys.forEach(s => {
+  const sysKeys = Object.keys(systems); sysKeys.forEach(s => {
     let currentSystemHealth = car.baseHealth[s];
     const repairs = [...car.visibleRepairs, ...car.hiddenRepairs].filter(r => r.system === s);
     repairs.forEach(r => { if (car.completedRepairs.includes(r.id)) currentSystemHealth += r.impact; });
-    totalHealth += Math.min(100, currentSystemHealth);
-  });
+    totalHealth += Math.min(100, currentSystemHealth); });
   return Math.round(totalHealth / sysKeys.length);
 }
 
@@ -385,21 +338,12 @@ async function renderCompetitorRating() {
     const { data } = await supabaseClient
         .from("leaderboard")
         .select("*")
-        .order("profit_total", {
-            ascending: false
-        })
+        .order("profit_total", { ascending: false })
         .limit(100);
-
     elements.ratingList.innerHTML = "";
-
     data.forEach((player, index) => {
-
-        const isMe =
-            currentUser &&
-            player.id === currentUser.id;
-
+        const isMe = currentUser && player.id === currentUser.id;
         const card = document.createElement("div");
-
         card.style.cssText = `
             display:flex;
             justify-content:space-between;
@@ -408,30 +352,13 @@ async function renderCompetitorRating() {
             margin-bottom:10px;
             border-radius:8px;
             border:1px solid var(--line);
-            ${isMe ? "background:rgba(47,109,246,.15);" : ""}
-        `;
-
+            ${isMe ? "background:rgba(47,109,246,.15);" : ""} `;
         card.innerHTML = `
-            <div>
-                <strong>
-                    #${index + 1}
-                    ${player.username}
-                    ${isMe ? "(Вы)" : ""}
-                </strong>
-                <br>
-                <span>
-                    Репутация:
-                    ${player.reputation}%
-                </span>
+            <div> <strong> #${index + 1} ${player.username} ${isMe ? "(Вы)" : ""} </strong>
+                <br> <span> Репутация: ${player.reputation}% </span>
             </div>
-
-            <strong>
-                ${formatMoney(player.profit_total)}
-            </strong>
-        `;
-
-        elements.ratingList.appendChild(card);
-    });
+            <strong> ${formatMoney(player.profit_total)} </strong> `;
+        elements.ratingList.appendChild(card); });
 }
 
 // --- ИЗМЕНЕНИЕ: ОБНОВЛЕННЫЙ ИНТЕРФЕЙС ПАНЕЛИ С ДВУМЯ КНОПКАМИ ВЫПЛАТ ---
@@ -550,23 +477,18 @@ function renderMarket() {
   } else {
     eventBanner.style.cssText = "display:none;";
   }
-
   const searchVal = document.querySelector("#searchInput")?.value.toLowerCase() || "";
   const condVal = document.querySelector("#conditionFilter")?.value || "all";
   const dealVal = document.querySelector("#dealFilter")?.value || "all";
-
   elements.marketList.innerHTML = "";
-
   const filteredCars = state.marketCars.filter(car => {
     const matchesSearch = car.name.toLowerCase().includes(searchVal);
     const matchesCond = condVal === "all" || car.condition === condVal;
-
     const visibleCost = car.visibleRepairs.reduce((s, r) => s + r.cost, 0);
     const forecast = car.resale - car.price - visibleCost;
     const matchesDeal = dealVal === "all" || 
                         (dealVal === "positive" && forecast > 0) || 
                         (dealVal === "danger" && forecast <= 0);
-
     return matchesSearch && matchesCond && matchesDeal;
   });
 
@@ -579,7 +501,6 @@ function renderMarket() {
     const template = document.querySelector("#marketCardTemplate").content.cloneNode(true);
     const visibleCost = car.visibleRepairs.reduce((s, r) => s + r.cost, 0);
     const forecast = car.resale - car.price - visibleCost;
-
     template.querySelector(".car-image").src = car.image;
     template.querySelector("h2").textContent = car.name;
     template.querySelector(".condition-badge").textContent = conditionLabels[car.condition];
@@ -589,11 +510,9 @@ function renderMarket() {
     template.querySelector(".visible-cost").textContent = formatMoney(visibleCost);
     template.querySelector(".forecast-text").textContent = formatMoney(forecast);
     template.querySelector(".forecast-text").className = `forecast-text ${forecast > 0 ? 'profit-positive' : 'profit-negative'}`;
-
     const btn = template.querySelector(".buy-button");
     btn.disabled = state.balance < car.price;
     btn.onclick = () => buyCar(car.instanceId);
-
     elements.marketList.append(template);
   });
 }
@@ -605,22 +524,18 @@ function renderGarageCollection(container, mode) {
     container.innerHTML = `<div class="empty-state"><h2>Объекты в обработке отсутствуют</h2><p>Перейдите на вкладку рынка для подбора активов</p></div>`;
     return;
   }
-
   state.garage.forEach(car => {
     const template = document.querySelector("#garageCardTemplate").content.cloneNode(true);
     const health = calculateHealth(car);
-
     template.querySelector(".garage-image").src = car.image;
     template.querySelector("h2").textContent = car.name;
     template.querySelector(".health-text").textContent = `${health}%`;
     template.querySelector(".purchase-text").textContent = formatMoney(car.purchasePrice);
     template.querySelector(".repair-text").textContent = formatMoney(car.repairCost);
-
     let currentEstimatedValue = car.resale * (health / 100);
     if (state.upgrades.marketing) currentEstimatedValue *= 1.08;
     currentEstimatedValue = Math.round(currentEstimatedValue);
     template.querySelector(".value-text").textContent = formatMoney(currentEstimatedValue);
-
     const financialResult = currentEstimatedValue - car.purchasePrice - car.repairCost;
     const resultElement = template.querySelector(".result-text");
     if (resultElement) {
@@ -632,18 +547,14 @@ function renderGarageCollection(container, mode) {
       badgeElement.textContent = financialResult >= 0 ? "В ПЛЮСЕ" : "В УБЫТКЕ";
       badgeElement.style.cssText = `font-size:11px; padding:2px 6px; border-radius:4px; margin-left:10px; font-weight:bold; background:${financialResult >= 0 ? 'rgba(85,200,120,0.2)' : 'rgba(225,93,100,0.2)'}; color:${financialResult >= 0 ? 'var(--green)' : 'var(--red)'};`;
     }
-
     const list = template.querySelector(".repair-items");
     const allKnown = [...car.visibleRepairs, ...car.hiddenRepairs.filter(r => car.revealedRepairs.includes(r.id))];
-
     allKnown.forEach(r => {
       const isDone = car.completedRepairs.includes(r.id);
       let actualCost = r.cost;
       if (state.upgrades.tools) actualCost = Math.round(actualCost * 0.85);
-
       let valueBump = Math.round((car.resale * (r.impact / 5)) / 100);
       if (state.upgrades.marketing) valueBump = Math.round(valueBump * 1.08);
-
       const item = document.createElement("div");
       item.className = "repair-row";
       item.innerHTML = `
@@ -652,8 +563,7 @@ function renderGarageCollection(container, mode) {
           <span style="font-size:11px;color:var(--muted);">${systems[r.system]}</span>
           ${!isDone ? `<br><span style="font-size:11px; color:var(--green); font-weight:500;">📈 Рост цены: +${money.format(valueBump)} ₸</span>` : ''}
         </div>
-        <strong>${isDone ? "Ликвидировано" : formatMoney(actualCost)}</strong>
-      `;
+        <strong>${isDone ? "Ликвидировано" : formatMoney(actualCost)}</strong> `;
       if (!isDone && mode !== "sale") {
         const btn = document.createElement("button");
         btn.className = "secondary-button";
@@ -663,70 +573,57 @@ function renderGarageCollection(container, mode) {
       }
       list.append(item);
     });
-
     const diagBtn = template.querySelector(".diagnose-button");
     if (diagBtn) {
       diagBtn.onclick = () => diagnoseCar(car.instanceId);
       if (mode === "sale" || state.upgrades.scanner) diagBtn.style.display = "none";
     }
-
     const sellBtn = template.querySelector(".sell-button");
     if (sellBtn) {
       sellBtn.onclick = () => sellCar(car.instanceId);
       if (mode === "repair") sellBtn.style.display = "none";
     }
-
     container.append(template);
   });
 }
 
 async function commit(msg) {
     saveState();
-    await saveCloudState();
-
-    render();
-    showToast(msg);
+    await saveCloudState(); render(); showToast(msg);
 }
+
 function saveState() { 
   localStorage.setItem(storageKey, JSON.stringify(state)); 
 }
+
 async function saveCloudState() {
-
     if (!currentUser) return;
-
     await supabaseClient
         .from("leaderboard")
         .upsert({
             id: currentUser.id,
             username: currentUser.user_metadata.username,
             email: currentUser.email,
-
             balance: state.balance,
             xp: state.xp,
             reputation: state.reputation,
-
             sold_count: state.soldCount,
             profit_total: state.profitTotal,
-
             updated_at: new Date()
         });
 }
 async function loadCloudSave() {
-
     const { data } = await supabaseClient
         .from("leaderboard")
         .select("*")
         .eq("id", currentUser.id)
         .single();
-
     if (!data) return;
-
     state.balance = data.balance;
     state.xp = data.xp;
     state.reputation = data.reputation;
     state.soldCount = data.sold_count;
     state.profitTotal = data.profit_total;
-
     render();
 }
 function loadState() {
@@ -734,41 +631,36 @@ function loadState() {
   return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(initialState));
 }
 async function initAuth() {
-
     const { data } =
         await supabaseClient
             .auth
             .getSession();
-
     if (data.session) {
-
-        currentUser =
-            data.session.user;
-
-        authOverlay.style.display =
-            "none";
-
+        currentUser = data.session.user;
+        authOverlay.style.display = "none";
     } else {
-
-        authOverlay.style.display =
-            "flex";
+        authOverlay.style.display = "flex";
     }
 }
+
 function formatMoney(v) { return `${money.format(v)} ₸`; }
 function addEvent(type, title, text) {
   state.events.unshift({ type, title, text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
 }
+
 function showToast(m) {
   elements.toast.textContent = m;
   elements.toast.classList.add("is-visible");
   setTimeout(() => elements.toast.classList.remove("is-visible"), 3000);
 }
+
 function switchView(v) {
   document.querySelectorAll(".view").forEach(el => el.classList.remove("is-visible"));
   const view = document.querySelector(`#${v}View`);
   if (view) view.classList.add("is-visible");
   document.querySelectorAll(".nav-button").forEach(b => b.classList.toggle("is-active", b.dataset.view === v));
 }
+
 function renderEvents() {
   if (!elements.eventsList) return;
   elements.eventsList.innerHTML = "";
@@ -779,6 +671,7 @@ function renderEvents() {
     elements.eventsList.append(el);
   });
 }
+
 function resetGame() {
   if (confirm("Выполнить сброс системы и очистить базу транзакций?")) {
     state = JSON.parse(JSON.stringify(initialState));
@@ -795,110 +688,49 @@ const usernameLabel = document.getElementById("usernameLabel");
 const authSubmitBtn = document.getElementById("authSubmitBtn");
 
 authToggleType.addEventListener("click", () => {
-
     isLoginMode = !isLoginMode;
-
     if (isLoginMode) {
-
         authTitle.textContent = "Вход";
         authDesc.textContent = "Войдите в аккаунт";
-
         authSubmitBtn.textContent = "Войти";
-
         usernameLabel.style.display = "none";
-
-        authToggleType.textContent =
-            "Нет аккаунта? Зарегистрироваться";
-
+        authToggleType.textContent = "Нет аккаунта? Зарегистрироваться";
     } else {
-
-        authTitle.textContent =
-            "Регистрация мастера";
-
-        authDesc.textContent =
-            "Создайте аккаунт";
-
-        authSubmitBtn.textContent =
-            "Зарегистрироваться";
-
+        authTitle.textContent = "Регистрация мастера";
+        authDesc.textContent = "Создайте аккаунт";
+        authSubmitBtn.textContent = "Зарегистрироваться";
         usernameLabel.style.display = "block";
-
-        authToggleType.textContent =
-            "Уже есть аккаунт? Войти";
-    }
+        authToggleType.textContent = "Уже есть аккаунт? Войти"; }
 });
 authForm.addEventListener("submit", async (e) => {
-
     e.preventDefault();
-
-    const email =
-        document.getElementById("authEmail").value;
-
-    const password =
-        document.getElementById("authPassword").value;
-
-    const username =
-        document.getElementById("authUsername").value;
-
+    const email = document.getElementById("authEmail").value;
+    const password = document.getElementById("authPassword").value;
+    const username = document.getElementById("authUsername").value;
     if (!isLoginMode) {
-
         const { data, error } =
-            await supabaseClient.auth.signUp({
-
-                email,
-                password,
-
-                options: {
-                    data: {
-                        username
-                    }
-                }
-            });
-
+            await supabaseClient.auth.signUp({ email, password, options: { data: { username } } });
         if (error) {
             alert(error.message);
             return;
         }
-
-        await supabaseClient
-            .from("leaderboard")
-            .insert({
-                id: data.user.id,
-                username,
-                email
-            });
-
+        await supabaseClient .from("leaderboard") .insert({ id: data.user.id, username, email });
         currentUser = data.user;
-
         authOverlay.style.display = "none";
-
         alert("Регистрация успешна");
-
     } else {
-
-        const { data, error } =
-            await supabaseClient
-                .auth
-                .signInWithPassword({
-                    email,
-                    password
-                });
-
+        const { data, error } = await supabaseClient .auth .signInWithPassword({ email, password });
         if (error) {
             alert(error.message);
             return;
         }
-
         currentUser = data.user;
-
         authOverlay.style.display = "none";
-
         alert("Добро пожаловать!");
     }
 });
 async function initAuth() {
     const { data } = await supabaseClient.auth.getSession();
-
     if (data.session) {
         currentUser = data.session.user;
         await loadCloudSave();
@@ -906,5 +738,4 @@ async function initAuth() {
         document.getElementById("authOverlay").style.display = "flex";
     }
 }
-
 initAuth();
