@@ -391,5 +391,38 @@
         </div>
     </div>
     <script src="app.js"></script>
+  <div
+ id="receiptModal"
+ style="
+ display:none;
+ position:fixed;
+ inset:0;
+ background:rgba(0,0,0,.6);
+ z-index:10000;
+">
+
+ <div
+ style="
+ width:500px;
+ max-width:90%;
+ margin:80px auto;
+ background:white;
+ color:black;
+ padding:25px;
+ border-radius:12px;
+ ">
+   <div id="receiptContent"></div>
+   <button
+ id="downloadReceiptBtn"
+ class="primary-button">
+ Скачать PDF
+</button>
+   <button
+     onclick="closeReceipt()"
+     class="primary-button">
+     Закрыть
+   </button>
+ </div>
+</div>
 </body>
 </html>
