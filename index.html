@@ -12,12 +12,9 @@
 .auth-overlay {
     position: fixed;
     inset: 0;
-
     background: rgba(0,0,0,.45);
     backdrop-filter: blur(3px);
-
     z-index: 9999;
-
     display: flex;
     justify-content: center;
     align-items: center;
@@ -26,19 +23,14 @@
 .auth-card {
     width: 420px;
     max-width: 90%;
-
     background: #111a26;
     border: 1px solid #2a3a50;
     border-radius: 16px;
-
     padding: 30px;
-
     box-shadow:
         0 0 30px rgba(0,0,0,.4),
         0 0 60px rgba(47,109,246,.15);
-
     text-align: center;
-
     animation: authShow .25s ease;
 }
 
@@ -46,14 +38,11 @@
     from {
         opacity: 0;
         transform: translateY(20px);
-    }
-
-    to {
+    } to {
         opacity: 1;
         transform: translateY(0);
     }
 }
-
 .auth-card h2 {
     margin-bottom: 10px;
 }
@@ -63,7 +52,6 @@
     flex-direction: column;
     gap: 14px;
 }
-
 .auth-form input {
     background: #0b111a;
     border: 1px solid #263447;
@@ -71,7 +59,6 @@
     padding: 12px;
     color: white;
 }
-
 .auth-toggle-btn {
     background: none;
     border: none;
@@ -82,32 +69,25 @@
 </style>
 </head>
 <body>
-
   <div id="authOverlay" class="auth-overlay" style="display: none;">
     <div class="auth-card">
       <h2 id="authTitle">Регистрация мастера</h2>
       <p id="authDesc">Создайте аккаунт, чтобы попасть в облачный рейтинг механиков.</p>
-
       <form id="authForm" class="auth-form">
-        <label id="usernameLabel">
-          Имя в рейтинге (Никнейм)
+        <label id="usernameLabel"> Имя в рейтинге (Никнейм)
           <input id="authUsername" type="text" placeholder="Например, СТО_Красавчик" required>
         </label>
-        <label>
-          Электронная почта
+        <label> Электронная почта
           <input id="authEmail" type="email" placeholder="example@mail.com" required>
         </label>
-        <label>
-          Пароль
+        <label> Пароль
           <input id="authPassword" type="password" placeholder="Минимум 6 символов" required>
         </label>
         <button class="primary-button" type="submit" id="authSubmitBtn">Зарегистрироваться</button>
       </form>
-
       <button id="authToggleType" class="auth-toggle-btn" type="button">Уже есть аккаунт? Войти</button>
     </div>
   </div>
-
   <div class="app-layout">
     <aside class="sidebar" aria-label="Главное меню">
       <div class="logo">
@@ -125,7 +105,6 @@
         <button class="nav-button" type="button" data-view="settings"><span>Н</span>Настройки</button>
       </nav>
     </aside>
-
     <div class="content-shell">
       <header class="topbar">
         <button id="menuButton" class="menu-button" type="button" aria-label="Открыть меню">Меню</button>
@@ -224,12 +203,10 @@
           </div>
 
           <section class="filters" aria-label="Фильтры рынка">
-            <label>
-              Поиск
+            <label> Поиск
               <input id="searchInput" type="search" placeholder="Марка или модель">
             </label>
-            <label>
-              Состояние
+            <label> Состояние
               <select id="conditionFilter">
                 <option value="all">Любое</option>
                 <option value="poor">Плохое</option>
@@ -237,8 +214,7 @@
                 <option value="good">Хорошее</option>
               </select>
             </label>
-            <label>
-              Прогноз
+            <label> Прогноз
               <select id="dealFilter">
                 <option value="all">Все сделки</option>
                 <option value="positive">Возможный плюс</option>
@@ -388,7 +364,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="scrim" class="scrim"></div>
-</body>
   </div> </div> <div class="donation-container" style="margin: 20px;">
         <div class="donation-form">
             <h3>Пополнение игрового баланса</h3>
@@ -402,7 +377,6 @@
                 <option value="crypto">Криптовалюта USDT (Комиссия: 1%)</option>
             </select>
         </div>
-
         <div class="donation-receipt">
             <h4>Детали платежа</h4>
             <div class="receipt-row"><span>Стоимость:</span><span id="res-base">0 KZT</span></div>
